@@ -48,12 +48,14 @@ Produce bare-bones markup on the server side containing *just the
 content*, however you see fit, and then use XSLT to tack the ancillary
 stuff on top in a separate process.
 
-Better yet, use embedded metadata to signal resources which can be
-[transcluded](https://en.wikipedia.org/wiki/Transclusion), along with
-XSLT's built-in `document()` function to haul them in. Use this method
-to recycle RSS feeds (as I do on my own site) or generate SVG data
-visualizations (as I did on the client project which inspired me to
-write this library).
+Better yet, use embedded metadata to signal resources which can
+be [transcluded](https://en.wikipedia.org/wiki/Transclusion), along
+with XSLT's
+built-in [`document()`](https://www.w3.org/TR/xslt/#function-document)
+function to haul them in. Use this method to recycle Atom/RSS feeds
+(as I do on my own site) or generate [SVG](https://www.w3.org/TR/SVG/)
+data visualizations (as I did on the client project which inspired me
+to write this library).
 
 I hereby reiterate that this technique can happen in the browser or
 not, in a reverse proxy, in a filter on the origin server,
