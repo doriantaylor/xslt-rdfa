@@ -33,7 +33,7 @@ since sometime between late 2000 and early 2001. XSLT is:
 From mid-2002 through 2005, I designed, implemented, and maintained a
 workflow that enabled over a dozen translators to create fine-grained
 internationalized content, *and* a room full of visual designers to
-dress it up. For this task, we used [http://docbook.org/](DocBook) and
+dress it up. For this task, we used [DocBook](http://docbook.org/) and
 XSLT. I created, in effect, a library, with notches in it that the
 visual designers could fill in with their changes to things like
 navigation and chrome. They didn't need to know how anything worked,
@@ -84,7 +84,8 @@ Web](https://www.w3.org/standards/semanticweb/).
 
 > It is important to recognize that RDF is not a _syntax_,
 > like [JSON](http://www.json.org/) is. RDF has _multiple_
-> **equivalent** syntaxes, [*including* JSON](http://json-ld.org/).
+> **equivalent**
+> syntaxes, [*including* at least one in JSON](http://json-ld.org/).
 
 RDF solves a number of problems with term management by making
 everything a _URI_, which means the same term can live with two
@@ -223,6 +224,11 @@ all associated subjects.
   as [RFC 2396](https://tools.ietf.org/html/rfc2396), as well as
   absolute path/query/fragment. Arbitrary `./` and `../` components
   are no go.
+* You are probably never going to see any kind of inferencing or
+  reasoning with this thing, not without server-side help.
+* Web browsers do not cross domains with XSLT (which is funny when you
+  consider that you can do a lot more damage with JavaScript), so
+  there's that too.
 
 # Dependencies
 
