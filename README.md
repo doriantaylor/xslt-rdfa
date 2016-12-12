@@ -153,7 +153,8 @@ I'm looking to RDFa to create machine-readable data objects that
 _also_ happen to be _human_-readable Web pages. Moreover, using
 content-negotiation techniques, I can say something like "the resource
 at the given URI *always* has the same meaning, irrespective of its
-*syntax*, whether HTML, JSON, or RDF/XML."
+*syntax*, whether HTML, JSON, [Turtle](https://www.w3.org/TR/turtle/),
+or [RDF/XML](https://www.w3.org/TR/rdf-syntax-grammar/)."
 
 This enables me to reorient my development targets in terms of
 discrete resources, or _functions_ that _generate_ discrete resources,
