@@ -162,8 +162,8 @@ and then those resources can be consumed downstream by literally
 anything, _including_ my own applications. Then the site's user
 interface can be considered _just another application_.
 
-This XSLT library, therefore, makes it possible to implement the
-application known as the given website's user interface.
+This XSLT library, therefore, provides one particular way to implement
+the application known as the given website's user interface.
 
 # Programming Interface
 
@@ -199,6 +199,11 @@ weirdly-delimited string.)
 
 Given a literal (and optional language/datatype) and predicate, return
 all associated subjects.
+
+## `rdfa:has-predicate`
+
+Given a set of URIs, either subject or object, return the subset of
+URIs that test positive for a given predicate.
 
 # Status/Road map
 
