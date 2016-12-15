@@ -1351,6 +1351,20 @@
 
 <!--<xsl:template match=:html:*[not(@property) and (not(@rel|@rev) or @re-->
 
+<!-- no about or typeof or rel or rev -->
+
+<xsl:template match="html:*[not(@rel|@rev|@about|@resource|@href|@src|@typeof|@property)]">
+  <xsl:param name="predicate" select="''"/>
+  <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:param name="probe" select="false()"/>
+  <!-- passthru -->
+  <xsl:apply-templates select="html:*" mode="rdfa:locate-property">
+    <xsl:with-param name="base" select="$base"/>
+    <xsl:with-param name="predicate" select="$predicate"/>
+    <xsl:with-param name="probe" select="$probe"/>
+  </xsl:apply-templates>
+</xsl:template>
+
 <xsl:template match="html:*[@property and (@rel|@rev or @content|@datatype)]" mode="rdfa:locate-property">
   <xsl:param name="predicate" select="''"/>
   <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
@@ -1366,7 +1380,11 @@
     <xsl:text> </xsl:text>
   </xsl:variable>
 
-  <xsl:if test="contains($properties, concat(' ', $predicate, ' '))">
+  <xsl:choose>
+    <xsl:when test="$probe and contains($properties, concat(' ', $predicate, ' '))">
+      <xsl:value-of select="true()"/>
+    </xsl:when>
+    <xsl:when test="contains($properties, concat(' ', $predicate, ' '))">
     <xsl:variable name="language">
       <xsl:variable name="_" select="ancestor-or-self::html:*[@xml:lang|@lang][1]"/>
       <xsl:choose>
@@ -1402,9 +1420,19 @@
       <xsl:when test="string-length($language)">
         <xsl:value-of select="concat('@', translate($language, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ_', 'abcdefghijklmnopqrstuvwxyz-'))"/>
       </xsl:when>
+      <xsl:otherwise/>
     </xsl:choose>
     <xsl:text>&#xf11e;</xsl:text>
-  </xsl:if>
+    </xsl:when>
+    <xsl:when test="@content and not(@rel|@rev|@resource|@href|src) and ($include-self or not(@about|@typeof))">
+      <xsl:apply-templates select="html:*" mode="rdfa:locate-property">
+        <xsl:with-param name="base" select="$base"/>
+        <xsl:with-param name="predicate" select="$predicate"/>
+        <xsl:with-param name="probe" select="$probe"/>
+      </xsl:apply-templates>
+    </xsl:when>
+    <xsl:otherwise/>
+  </xsl:choose>
   
 </xsl:template>
 
@@ -2199,6 +2227,57 @@
   </xsl:for-each>
 
 </xsl:template>
+
+<xsl:template match="html:*|html:*/@*" mode="rdfa:literal-subject-node">
+  <xsl:param name="subject" select="''"/>
+  <xsl:param name="predicate" select="''"/>
+  <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:param name="probe" select="false()"/>
+
+  <xsl:variable name="element" select="(self::*|..)[last()]"/>
+
+  <xsl:if test="$DEBUG">
+  <xsl:message>
+    <xsl:text>LITERAL SPO: </xsl:text>
+    <xsl:value-of select="$subject"/><xsl:text> </xsl:text>
+    <xsl:apply-templates select="$element" mode="element-dump"/>
+  </xsl:message>
+  </xsl:if>
+
+  <xsl:variable name="is-subject">
+    <xsl:apply-templates select="." mode="rdfa:is-subject"/>
+  </xsl:variable>
+  <xsl:choose>
+    <xsl:when test="string-length($is-subject)">
+      <!-- descendant-or-self property -->
+      <xsl:if test="$DEBUG">
+        <xsl:message>LITERAL CALLED WITH SUBJECT <xsl:apply-templates select="$element" mode="element-dump"/></xsl:message>
+      </xsl:if>
+
+      <xsl:apply-templates select="$element" mode="rdfa:locate-property">
+        <xsl:with-param name="predicate" select="$predicate"/>
+        <xsl:with-param name="base" select="$base"/>
+        <xsl:with-param name="include-self" select="true()"/>
+        <xsl:with-param name="probe" select="$probe"/>
+      </xsl:apply-templates>
+    </xsl:when>
+    <xsl:otherwise>
+      <!-- descendant property -->
+      <xsl:if test="$DEBUG">
+        <xsl:message>LITERAL CALLED WITH OBJECT</xsl:message>
+      </xsl:if>
+      <xsl:apply-templates select="$element/html:*[@rel]|$element/html:*[not(@rel|@rev)][(@property and @content) or not(@property)]|$element/html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][not(@property) or (@property and @content)]" mode="rdfa:locate-property">
+        <xsl:with-param name="predicate" select="$predicate"/>
+        <xsl:with-param name="base" select="$base"/>
+        <xsl:with-param name="include-self" select="false()"/>
+        <xsl:with-param name="probe" select="$probe"/>
+      </xsl:apply-templates>
+    </xsl:otherwise>
+  </xsl:choose>
+
+</xsl:template>
+
+
 
 <xsl:template name="rdfa:object-literal-internal">
   <xsl:param name="subject"   select="''"/>
