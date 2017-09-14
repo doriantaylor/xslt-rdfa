@@ -29,21 +29,9 @@
 
 <!-- ### HERE IS A CRAPLOAD OF KEYS ### -->
 
-<!--<xsl:key name="rdfa:interesting-nodes" match="html:html|html:html/html:head|html:html/html:body|html:*[@about|@typeof|@resource|@href|@src|@rel|@rev|@property]|html:*[@about|@typeof|@resource|@href|@src|@rel|@rev|@property]/@*" use="''"/>-->
-
 <xsl:key name="rdfa:reverse-node-id" match="html:html|html:head|html:body|html:*[@about|@typeof|@resource|@href|@src|@rel|@rev|@property|@inlist]|html:*[@about|@typeof|@resource|@href|@src|@rel|@rev|@property|@inlist]/@*" use="generate-id(.)"/>
 
 <xsl:key name="rdfa:has-typeof" match="html:*[@typeof]" use="''"/>
-
-<!--<xsl:key name="rdfa:has-uri" match="html:*[@about]|html:*[@resource]|html:*[@href and not(@resource)]|html:*[@src and not(@href|@resource)]" use="''"/>-->
-<!--<xsl:key name="rdfa:uri-node" match="html:*[@about|@resource|@href|@src]" use="@about|@resource|@href|@src"/>-->
-<!--<xsl:key name="rdfa:resource-node" match="html:*[@about]|html:*[@resource]|html:*[@href][not(@resource)]|html:*[@src][not(@href|@resource)]" use="@about|@resource|@href|@src"/>-->
-
-<!--<xsl:key name="rdfa:source-node" match="html:*[@about]/@about" use="normalize-space(.)"/>-->
-<!--<xsl:key name="rdfa:target-node" match="html:*[@resource]/@resource|html:*[@href][not(@resource)]/@href|html:*[@src][not(@resource or @href)]/@src" use="normalize-space(.)"/>-->
-
-<!--<xsl:key name="rdfa:curie-node" match="html:*[@about]/@about|html:*[@resource]/@resource" use="normalize-space(.)"/>-->
-<!--<xsl:key name="rdfa:uri-node" match="html:*[@about]/@about|html:*[@resource]/@resource|html:*[@href][not(@resource)]/@href|html:*[@src][not(@resource|@href)]/@src" use="normalize-space(.)"/>-->
 
 <xsl:key name="rdfa:curie-node" match="html:*[@about][not(ancestor::*[@property and not(@content)])]/@about|html:*[@resource][not(ancestor::*[@property and not(@content)])]/@resource" use="normalize-space(.)"/>
 
@@ -366,23 +354,6 @@
   <xsl:param name="strict" select="false()"/>
   <xsl:param name="uri:DEBUG" select="false()"/>
 
-  <!--
-  <xsl:variable name="_b" select="normalize-space($base)"/>
-  <xsl:variable name="_u" select="normalize-space($uri)"/>
-
-  <xsl:if test="$_b != translate($_b, ' ', '')">
-    <xsl:message terminate="yes">uri:make-relative-uri: Found whitespace in base URI</xsl:message>
-  </xsl:if>
-
-  <xsl:if test="$_u != translate($_u, ' ', '')">
-    <xsl:message terminate="yes">uri:make-relative-uri: Found whitespace in URI</xsl:message>
-  </xsl:if>
-
-  <xsl:if test="string-length($_b) = 0">
-    <xsl:message terminate="yes">uri:make-relative-uri: Base URI is empty</xsl:message>
-  </xsl:if>
-  -->
-
   <xsl:variable name="abs-base" select="normalize-space($base)"/>
   <xsl:variable name="abs-uri">
     <xsl:call-template name="uri:resolve-uri">
@@ -538,61 +509,6 @@
     </xsl:otherwise>
   </xsl:choose>
 </xsl:template>
-
-<!--
-<xsl:template name="str:unique-tokens-NOT">
-  <xsl:param name="string"/>
-  <xsl:param name="cache"/>
--->
-  <!-- normalize input --><!--
-  <xsl:variable name="_ns" select="normalize-space($string)"/>
-
-  <xsl:choose>
-    <xsl:when test="contains($_ns, ' ')">
-      <xsl:variable name="in" select="substring-before($_ns, ' ')"/>
-
-      <xsl:variable name="out">
-        <xsl:choose>
-          <xsl:when test="contains(concat(' ', $cache, ' '), concat(' ', $in, ' '))">
-            <xsl:value-of select="$cache"/>
-          </xsl:when>
-          <xsl:otherwise>
-            <xsl:value-of select="concat($cache, ' ', $in)"/>
-          </xsl:otherwise>
-        </xsl:choose>
-      </xsl:variable>
-
-      <xsl:variable name="rest" select="substring-after($_ns, ' ')"/>
-      <xsl:choose>
-        <xsl:when test="contains($rest, ' ')">
-          <xsl:call-template name="str:unique-tokens">
-            <xsl:with-param name="string" select="$rest"/>
-            <xsl:with-param name="cache" select="$out"/>
-          </xsl:call-template>
-        </xsl:when>
-        <xsl:when test="contains(concat(' ', $cache, ' '), concat(' ', $rest, ' '))">
-          <xsl:value-of select="normalize-space($out)"/>
-        </xsl:when>
-        <xsl:otherwise>
-          <xsl:value-of select="normalize-space(concat($out, ' ', $rest))"/>
-        </xsl:otherwise>
-      </xsl:choose>
-    </xsl:when>
-    <xsl:when test="string-length($_ns) != 0">
-      <xsl:choose>
-        <xsl:when test="contains(concat(' ', $cache, ' '), concat(' ', $_ns, ' '))">
-          <xsl:value-of select="normalize-space($cache)"/>
-        </xsl:when>
-        <xsl:otherwise>
-          <xsl:value-of select="concat($cache, ' ', $_ns)"/>
-        </xsl:otherwise>
-      </xsl:choose>
-    </xsl:when>
-    <xsl:otherwise><xsl:value-of select="normalize-space($cache)"/></xsl:otherwise>
-  </xsl:choose>
-
-</xsl:template>
--->
 
   <!--
       per https://www.w3.org/International/questions/qa-controls
