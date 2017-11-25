@@ -4,7 +4,7 @@
                 xmlns:html="http://www.w3.org/1999/xhtml"
                 xmlns:uri="http://xsltsl.org/uri"
                 xmlns:str="http://xsltsl.org/string"
-                xmlns:rdfa="https://www.w3.org/ns/rdfa#"
+                xmlns:rdfa="http://www.w3.org/ns/rdfa#"
                 xmlns="http://www.w3.org/1999/xhtml"
                 exclude-result-prefixes="html uri str rdfa">
 
@@ -24,8 +24,8 @@
     governing permissions and limitations under the License.
 -->
 
-<xsl:import href="xsltsl/uri"/>
-<xsl:import href="xsltsl/string"/>
+<!--<xsl:import href="xsltsl/uri"/>-->
+<!--<xsl:import href="xsltsl/string"/>-->
 
 <!-- ### HERE IS A CRAPLOAD OF KEYS ### -->
 
@@ -70,11 +70,313 @@
     spec.
 
 -->
+<xsl:variable name="uri:DEBUG"       select="false()"/>
 <xsl:variable name="rdfa:DEBUG"      select="false()"/>
-<xsl:variable name="rdfa:RDF-NS"     select="'http://www.w3.org/1999/02/22-rdf-syntax-ns#'"/>
-<xsl:variable name="rdfa:XSD-NS"     select="'http://www.w3.org/2001/XMLSchema#'"/>
 <xsl:variable name="rdfa:RECORD-SEP" select="'&#xf11e;'"/>
 <xsl:variable name="rdfa:UNIT-SEP"   select="'&#xf11f;'"/>
+<xsl:variable name="rdfa:RDF-NS"     select="'http://www.w3.org/1999/02/22-rdf-syntax-ns#'"/>
+<xsl:variable name="rdfa:XSD-NS"     select="'http://www.w3.org/2001/XMLSchema#'"/>
+
+<!--
+    ### THIS IS ALL STUFF THAT COMES STRAIGHT FROM XSLTSL
+-->
+
+<xsl:template name="str:generate-string">
+  <xsl:param name="text"/>
+  <xsl:param name="count"/>  
+  <xsl:choose>
+    <xsl:when test="string-length($text) = 0 or $count &lt;= 0"/>
+    <xsl:otherwise>
+      <xsl:value-of select="$text"/>
+      <xsl:call-template name="str:generate-string">
+        <xsl:with-param name="text" select="$text"/>
+        <xsl:with-param name="count" select="$count - 1"/>
+      </xsl:call-template>
+    </xsl:otherwise>
+  </xsl:choose>
+</xsl:template>
+
+<xsl:template name="str:subst">
+  <xsl:param name="text"/>
+  <xsl:param name="replace"/>
+  <xsl:param name="with"/>
+  <xsl:param name="disable-output-escaping">no</xsl:param>
+  <xsl:choose>
+    <xsl:when test="string-length($replace) = 0 and $disable-output-escaping = 'yes'">
+      <xsl:value-of select="$text" disable-output-escaping="yes"/>
+    </xsl:when>
+    <xsl:when test="string-length($replace) = 0">
+      <xsl:value-of select="$text"/>
+    </xsl:when>
+    <xsl:when test="contains($text, $replace)">
+      <xsl:variable name="before" select="substring-before($text, $replace)"/>
+      <xsl:variable name="after" select="substring-after($text, $replace)"/>
+      <xsl:choose>
+        <xsl:when test="$disable-output-escaping = 'yes'">
+          <xsl:value-of select="$before" disable-output-escaping="yes"/>
+          <xsl:value-of select="$with" disable-output-escaping="yes"/>
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:value-of select="$before"/>
+          <xsl:value-of select="$with"/>
+        </xsl:otherwise>
+      </xsl:choose>
+      <xsl:call-template name="str:subst">
+        <xsl:with-param name="text" select="$after"/>
+        <xsl:with-param name="replace" select="$replace"/>
+        <xsl:with-param name="with" select="$with"/>
+        <xsl:with-param name="disable-output-escaping" select="$disable-output-escaping"/>
+      </xsl:call-template>
+    </xsl:when>
+    <xsl:when test="$disable-output-escaping = 'yes'">
+      <xsl:value-of select="$text" disable-output-escaping="yes"/>
+    </xsl:when>
+    <xsl:otherwise><xsl:value-of select="$text"/></xsl:otherwise>
+  </xsl:choose>            
+</xsl:template>
+
+<xsl:template name="str:substring-before-last">
+  <xsl:param name="text"/>
+  <xsl:param name="chars"/>
+
+  <xsl:choose>
+    <xsl:when test="string-length($text) = 0"/>
+    <xsl:when test="string-length($chars) = 0">
+      <xsl:value-of select="$text"/>
+    </xsl:when>
+    <xsl:when test="contains($text, $chars)">
+      <xsl:call-template name="str:substring-before-last-aux">
+        <xsl:with-param name="text" select="$text"/>
+        <xsl:with-param name="chars" select="$chars"/>
+      </xsl:call-template>
+    </xsl:when>
+    <xsl:otherwise><xsl:value-of select="$text"/></xsl:otherwise>
+  </xsl:choose>
+</xsl:template>
+
+<xsl:template name="str:substring-before-last-aux">
+  <xsl:param name="text"/>
+  <xsl:param name="chars"/>
+
+  <xsl:choose>
+    <xsl:when test="string-length($text) = 0"/>
+    <xsl:when test="contains($text, $chars)">
+      <xsl:variable name="after">
+        <xsl:call-template name="str:substring-before-last-aux">
+          <xsl:with-param name="text" select="substring-after($text, $chars)"/>
+          <xsl:with-param name="chars" select="$chars"/>
+        </xsl:call-template>
+      </xsl:variable>
+
+      <xsl:value-of select="substring-before($text, $chars)"/>
+      <xsl:if test="string-length($after) &gt; 0">
+        <xsl:value-of select="$chars"/>
+        <xsl:copy-of select="$after"/>
+      </xsl:if>
+    </xsl:when>
+    <xsl:otherwise/>
+  </xsl:choose>
+</xsl:template>
+
+<xsl:template name="uri:get-uri-scheme">
+  <xsl:param name="uri"/>
+  <xsl:if test="contains($uri, ':')">
+    <xsl:value-of select="substring-before($uri, ':')"/>
+  </xsl:if>
+</xsl:template>
+
+<xsl:template name="uri:get-uri-authority">
+  <xsl:param name="uri"/>
+  <xsl:variable name="a">
+    <xsl:choose>
+      <xsl:when test="contains($uri, ':')">
+        <xsl:if test="substring(substring-after($uri, ':'), 1, 2) = '//'">
+          <xsl:value-of select="substring(substring-after($uri, ':'), 3)"/>
+        </xsl:if>
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:if test="substring($uri, 1, 2) = '//'">
+          <xsl:value-of select="substring($uri, 3)"/>
+        </xsl:if>
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:variable>
+  <xsl:choose>
+    <xsl:when test="contains($a, '/')">
+      <xsl:value-of select="substring-before($a, '/')" />
+    </xsl:when>
+    <xsl:when test="contains($a, '?')">
+      <xsl:value-of select="substring-before($a, '?')" />
+    </xsl:when>
+    <xsl:when test="contains($a, '#')">
+      <xsl:value-of select="substring-before($a, '#')" />
+    </xsl:when>
+    <xsl:otherwise>
+      <xsl:value-of select="$a" />
+    </xsl:otherwise>
+  </xsl:choose>
+</xsl:template>
+
+<xsl:template name="uri:get-uri-path">
+  <xsl:param name="uri"/>
+  <xsl:variable name="p">
+    <xsl:choose>
+      <xsl:when test="contains($uri, '//')">
+        <xsl:if test="contains(substring-after($uri, '//'), '/')">
+          <xsl:value-of select="concat('/', substring-after(substring-after($uri, '//'), '/'))"/>
+        </xsl:if>
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:choose>
+          <xsl:when test="contains($uri, ':')">
+            <xsl:value-of select="substring-after($uri, ':')"/>
+          </xsl:when>
+          <xsl:otherwise>
+            <xsl:value-of select="$uri"/>
+          </xsl:otherwise>
+        </xsl:choose>
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:variable>
+  <xsl:choose>
+    <xsl:when test="contains($p, '?')">
+      <xsl:value-of select="substring-before($p, '?')" />
+    </xsl:when>
+    <xsl:when test="contains($p, '#')">
+      <xsl:value-of select="substring-before($p, '#')" />
+    </xsl:when>
+    <xsl:otherwise>
+      <xsl:value-of select="$p" />
+    </xsl:otherwise>
+  </xsl:choose>
+</xsl:template>
+
+<xsl:template name="uri:get-uri-query">
+  <xsl:param name="uri"/>
+  <xsl:variable name="q" select="substring-after($uri, '?')"/>
+  <xsl:choose>
+    <xsl:when test="contains($q, '#')">
+      <xsl:value-of select="substring-before($q, '#')"/>
+    </xsl:when>
+    <xsl:otherwise><xsl:value-of select="$q"/></xsl:otherwise>
+  </xsl:choose>
+</xsl:template>
+
+<xsl:template name="uri:get-uri-fragment">
+  <xsl:param name="uri"/>
+  <xsl:value-of select="substring-after($uri, '#')"/>
+</xsl:template>
+
+<xsl:template name="uri:get-path-without-file">
+  <xsl:param name="path-with-file" />
+  <xsl:param name="path-without-file" />
+
+  <xsl:choose>
+    <xsl:when test="contains($path-with-file, '/')">
+      <xsl:call-template name="uri:get-path-without-file">
+        <xsl:with-param name="path-with-file" select="substring-after($path-with-file, '/')" />
+        <xsl:with-param name="path-without-file">
+          <xsl:choose>
+            <xsl:when test="$path-without-file">
+              <xsl:value-of select="concat($path-without-file, '/', substring-before($path-with-file, '/'))" />
+            </xsl:when>
+            <xsl:otherwise>
+              <xsl:value-of select="substring-before($path-with-file, '/')" />
+            </xsl:otherwise>
+          </xsl:choose>
+        </xsl:with-param>
+      </xsl:call-template>
+    </xsl:when>
+    <xsl:otherwise>
+      <xsl:value-of select="$path-without-file" />
+    </xsl:otherwise>
+  </xsl:choose>
+</xsl:template>
+
+<xsl:template name="uri:normalize-path">
+  <xsl:param name="path"/>
+  <xsl:param name="result" select="''"/>
+
+  <xsl:choose>
+    <xsl:when test="string-length($path)">
+      <xsl:choose>
+        <xsl:when test="$path = '/'">
+          <xsl:value-of select="concat($result, '/')"/>
+        </xsl:when>
+        <xsl:when test="$path = '.'">
+          <xsl:value-of select="concat($result, '/')"/>
+        </xsl:when>
+        <xsl:when test="$path = '..'">
+          <xsl:call-template name="uri:get-path-without-file">
+            <xsl:with-param name="path-with-file" select="$result"/>
+          </xsl:call-template>
+          <xsl:value-of select="'/'"/>
+        </xsl:when>
+        <xsl:when test="contains($path, '/')">
+          <!-- the current segment -->
+          <xsl:variable name="s" select="substring-before($path, '/')"/>
+          <!-- the remaining path -->
+          <xsl:variable name="p">
+            <xsl:choose>
+              <xsl:when test="substring-after($path, '/') = ''">
+                <xsl:value-of select="'/'"/>
+              </xsl:when>
+              <xsl:otherwise>
+                <xsl:value-of select="substring-after($path, '/')"/>
+              </xsl:otherwise>
+            </xsl:choose>
+          </xsl:variable>
+          <xsl:choose>
+            <xsl:when test="$s = ''">
+              <xsl:call-template name="uri:normalize-path">
+                <xsl:with-param name="path" select="$p"/>
+                <xsl:with-param name="result" select="$result"/>
+              </xsl:call-template>
+            </xsl:when>
+            <xsl:when test="$s = '.'">
+              <xsl:call-template name="uri:normalize-path">
+                <xsl:with-param name="path" select="$p"/>
+                <xsl:with-param name="result" select="$result"/>
+              </xsl:call-template>
+            </xsl:when>
+            <xsl:when test="$s = '..'">
+              <xsl:choose>
+                <xsl:when test="string-length($result) and (substring($result, string-length($result) - 2) != '/..')">
+                  <xsl:call-template name="uri:normalize-path">
+                    <xsl:with-param name="path" select="$p"/>
+                    <xsl:with-param name="result">
+                      <xsl:call-template name="uri:get-path-without-file">
+                        <xsl:with-param name="path-with-file" select="$result"/>
+                      </xsl:call-template>
+                    </xsl:with-param>
+                  </xsl:call-template>
+                </xsl:when>
+                <xsl:otherwise>
+                  <xsl:call-template name="uri:normalize-path">
+                    <xsl:with-param name="path" select="$p"/>
+                    <xsl:with-param name="result" select="concat($result, '/..')"/>
+                  </xsl:call-template>
+                </xsl:otherwise>
+              </xsl:choose>
+            </xsl:when>
+            <xsl:otherwise>
+              <xsl:call-template name="uri:normalize-path">
+                <xsl:with-param name="path" select="$p"/>
+                <xsl:with-param name="result" select="concat($result, '/', $s)"/>
+              </xsl:call-template>
+            </xsl:otherwise>
+          </xsl:choose>
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:value-of select="concat($result, '/', $path)"/>
+        </xsl:otherwise>
+      </xsl:choose>
+    </xsl:when>
+    <xsl:otherwise>
+      <xsl:value-of select="$result"/>
+    </xsl:otherwise>
+  </xsl:choose>
+</xsl:template>
 
 <!--
     ### THIS IS ALL STUFF THAT SHOULD REALLY BE INCORPORATED INTO XSLTSL ###
@@ -484,6 +786,7 @@
   <xsl:variable name="_norm" select="normalize-space($string)"/>
 
   <xsl:choose>
+    <xsl:when test="$_norm  = ''"><xsl:value-of select="$cache"/></xsl:when>
     <xsl:when test="contains($_norm, ' ')">
       <xsl:variable name="first" select="substring-before($_norm, ' ')"/>
       <xsl:variable name="rest"  select="substring-after($_norm, ' ')"/>
@@ -499,10 +802,21 @@
         </xsl:choose>
       </xsl:variable>
 
-      <xsl:call-template name="str:unique-tokens">
-        <xsl:with-param name="string" select="$rest"/>
-        <xsl:with-param name="cache"  select="$cache-out"/>
-      </xsl:call-template>
+      <xsl:choose>
+        <xsl:when test="contains($rest, ' ')">
+          <xsl:call-template name="str:unique-tokens">
+            <xsl:with-param name="string" select="$rest"/>
+            <xsl:with-param name="cache"  select="$cache-out"/>
+          </xsl:call-template>
+        </xsl:when>
+        <xsl:when test="contains(concat(' ', $cache-out, ' '), concat(' ' , $rest, ' '))">
+          <xsl:value-of select="$cache-out"/>
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:value-of select="concat($cache-out, $rest, ' ')"/>
+        </xsl:otherwise>
+      </xsl:choose>
+
     </xsl:when>
     <xsl:otherwise>
       <xsl:value-of select="concat($cache, $_norm)"/>
@@ -546,7 +860,7 @@
 
       1) encode the whitespace characters into their PUP counterparts
          with translate()
-      2) translate() a particular delimeter into spaces and run
+      2) translate() a particular delimiter into spaces and run
          normalize-space() to prune out empty records
       3) translate() the delimiter back to its original counterpart
       4) translate() whitespace chars back to their originals too
@@ -704,14 +1018,25 @@
 
     <xsl:variable name="rest" select="substring-after($str, ' ')"/>
 
-    <xsl:if test="string-length($rest) != 0">
-      <xsl:text> </xsl:text>
-      <xsl:call-template name="rdfa:resolve-curie-list">
-        <xsl:with-param name="list" select="$rest"/>
-        <xsl:with-param name="node" select="$node"/>
-        <xsl:with-param name="base" select="$base"/>
-      </xsl:call-template>
-    </xsl:if>
+    <xsl:choose>
+      <xsl:when test="$rest = ''"/>
+      <xsl:when test="contains($rest, ' ')">
+        <xsl:text> </xsl:text>
+        <xsl:call-template name="rdfa:resolve-curie-list">
+          <xsl:with-param name="list" select="$rest"/>
+          <xsl:with-param name="node" select="$node"/>
+          <xsl:with-param name="base" select="$base"/>
+        </xsl:call-template>
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:text> </xsl:text>
+        <xsl:call-template name="rdfa:resolve-curie">
+          <xsl:with-param name="curie" select="$rest"/>
+          <xsl:with-param name="node" select="$node"/>
+          <xsl:with-param name="base" select="$base"/>
+        </xsl:call-template>
+      </xsl:otherwise>
+    </xsl:choose>
   </xsl:if>
 
 </xsl:template>
@@ -1273,11 +1598,22 @@
     <xsl:when test="@rel">
       <xsl:variable name="_">
         <xsl:text> </xsl:text>
-        <xsl:call-template name="rdfa:resolve-curie-list">
-          <xsl:with-param name="list" select="@rel"/>
-          <xsl:with-param name="node" select="."/>
-          <xsl:with-param name="base" select="$base"/>
-        </xsl:call-template>
+        <xsl:choose>
+          <xsl:when test="contains(normalize-space(@rel), ' ')">
+            <xsl:call-template name="rdfa:resolve-curie-list">
+              <xsl:with-param name="list" select="@rel"/>
+              <xsl:with-param name="node" select="."/>
+              <xsl:with-param name="base" select="$base"/>
+            </xsl:call-template>
+          </xsl:when>
+          <xsl:otherwise>
+            <xsl:call-template name="rdfa:resolve-curie">
+              <xsl:with-param name="curie" select="@rel"/>
+              <xsl:with-param name="node" select="."/>
+              <xsl:with-param name="base" select="$base"/>
+            </xsl:call-template>
+          </xsl:otherwise>
+        </xsl:choose>
         <xsl:text> </xsl:text>
       </xsl:variable>
 
@@ -1316,11 +1652,22 @@
     <xsl:when test="@property">
       <xsl:variable name="_">
         <xsl:text> </xsl:text>
-        <xsl:call-template name="rdfa:resolve-curie-list">
-          <xsl:with-param name="list" select="@property"/>
-          <xsl:with-param name="node" select="."/>
-          <xsl:with-param name="base" select="$base"/>
-        </xsl:call-template>
+        <xsl:choose>
+          <xsl:when test="contains(normalize-space(@property), ' ')">
+            <xsl:call-template name="rdfa:resolve-curie-list">
+              <xsl:with-param name="list" select="@property"/>
+              <xsl:with-param name="node" select="."/>
+              <xsl:with-param name="base" select="$base"/>
+            </xsl:call-template>
+          </xsl:when>
+          <xsl:otherwise>
+            <xsl:call-template name="rdfa:resolve-curie">
+              <xsl:with-param name="curie" select="@property"/>
+              <xsl:with-param name="node" select="."/>
+              <xsl:with-param name="base" select="$base"/>
+            </xsl:call-template>
+          </xsl:otherwise>
+        </xsl:choose>
         <xsl:text> </xsl:text>
       </xsl:variable>
 
@@ -1363,20 +1710,25 @@
 <xsl:template match="*|@*" mode="rdfa:locate-property">
   <xsl:message terminate="yes">THIS SHOULD NEVER BE RUN</xsl:message>
 </xsl:template>
-<xsl:template match="html:*" mode="rdfa:locate-property"/>
+<xsl:template match="html:*" mode="rdfa:locate-property"/><!--
+  <xsl:message terminate="yes">THIS SHOULD NEVER BE RUN <xsl:apply-templates select="." mode="element-dump"/></xsl:message>
+</xsl:template>-->
 
 <!--<xsl:template match=:html:*[not(@property) and (not(@rel|@rev) or @re-->
 
 <!-- no about or typeof or rel or rev -->
 
-<xsl:template match="html:*[not(@rel|@rev|@about|@resource|@href|@src|@typeof|@property)]">
+<xsl:template match="html:head[@typeof]|html:body[@typeof]|html:*[not(@rel|@rev|@about|@resource|@href|@src|@typeof|@property)]" mode="rdfa:locate-property" priority="10">
   <xsl:param name="predicate" select="''"/>
   <xsl:param name="language" select="''"/>
   <xsl:param name="datatype" select="''"/>
-  <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:param name="base" select="normalize-space((ancestor-or-self::html:html/html:head/html:base[@href])[1]/@href)"/>
   <xsl:param name="include-self" select="false()"/>
   <xsl:param name="probe" select="false()"/>
   <!-- passthru -->
+  <xsl:if test="$rdfa:DEBUG">
+    <xsl:message>PT on <xsl:apply-templates select="." mode="element-dump"/></xsl:message>
+  </xsl:if>
   <xsl:apply-templates select="html:*" mode="rdfa:locate-property">
     <xsl:with-param name="base" select="$base"/>
     <xsl:with-param name="predicate" select="$predicate"/>
@@ -1387,21 +1739,33 @@
   </xsl:apply-templates>
 </xsl:template>
 
-<xsl:template match="html:*[@property and (@rel|@rev or @content|@datatype)]" mode="rdfa:locate-property">
+<!--<xsl:template match="html:*[@property and (@rel|@rev or @content|@datatype)]" mode="rdfa:locate-property">-->
+<xsl:template match="html:*[@property]" mode="rdfa:locate-property">
   <xsl:param name="predicate" select="''"/>
   <xsl:param name="language" select="''"/>
   <xsl:param name="datatype" select="''"/>
-  <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:param name="base" select="normalize-space((ancestor-or-self::html:html/html:head/html:base[@href])[1]/@href)"/>
   <xsl:param name="include-self" select="false()"/>
   <xsl:param name="probe" select="false()"/>
 
   <xsl:variable name="properties">
     <xsl:text> </xsl:text>
-    <xsl:call-template name="rdfa:resolve-curie-list">
-      <xsl:with-param name="list" select="@property"/>
-      <xsl:with-param name="node" select="."/>
-      <xsl:with-param name="base" select="$base"/>
-    </xsl:call-template>
+    <xsl:choose>
+      <xsl:when test="contains(normalize-space(@property), ' ')">
+        <xsl:call-template name="rdfa:resolve-curie-list">
+          <xsl:with-param name="list" select="@property"/>
+          <xsl:with-param name="node" select="."/>
+          <xsl:with-param name="base" select="$base"/>
+        </xsl:call-template>
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:call-template name="rdfa:resolve-curie">
+          <xsl:with-param name="curie" select="@property"/>
+          <xsl:with-param name="node" select="."/>
+          <xsl:with-param name="base" select="$base"/>
+        </xsl:call-template>
+      </xsl:otherwise>
+    </xsl:choose>
     <xsl:text> </xsl:text>
   </xsl:variable>
 
@@ -1418,11 +1782,13 @@
   </xsl:variable>
 
   <xsl:variable name="this-datatype">
-    <xsl:call-template name="rdfa:resolve-curie">
-      <xsl:with-param name="curie" select="@datatype"/>
-      <xsl:with-param name="node" select="."/>
-      <xsl:with-param name="base" select="$base"/>
-    </xsl:call-template>
+    <xsl:if test="@datatype">
+      <xsl:call-template name="rdfa:resolve-curie">
+        <xsl:with-param name="curie" select="@datatype"/>
+        <xsl:with-param name="node" select="."/>
+        <xsl:with-param name="base" select="$base"/>
+      </xsl:call-template>
+    </xsl:if>
   </xsl:variable>
 
   <xsl:variable name="lang-ok" select="string-length($language) = 0 or (string-length($language) and ($language = $this-language or starts-with($this-language, concat($language, '-'))))"/>
@@ -1484,7 +1850,7 @@
 
 <xsl:template match="html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][not(@property) or (@property and @content)]" mode="rdfa:locate-rev-down">
   <xsl:param name="predicate" select="''"/>
-  <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:param name="base" select="normalize-space((ancestor-or-self::html:html/html:head/html:base[@href])[1]/@href)"/>
   <xsl:param name="probe" select="false()"/>
 
   <xsl:if test="$rdfa:DEBUG">
@@ -1500,7 +1866,7 @@
 
 <xsl:template match="html:*[@rev]" mode="rdfa:locate-rev-down">
   <xsl:param name="predicate" select="''"/>
-  <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:param name="base" select="normalize-space((ancestor-or-self::html:html/html:head/html:base[@href])[1]/@href)"/>
   <xsl:param name="include-self" select="false()"/>
   <xsl:param name="probe" select="false()"/>
 
@@ -1512,11 +1878,22 @@
     <xsl:otherwise>
       <xsl:variable name="_">
         <xsl:text> </xsl:text>
-        <xsl:call-template name="rdfa:resolve-curie-list">
-          <xsl:with-param name="list" select="@rev"/>
-          <xsl:with-param name="node" select="."/>
-          <xsl:with-param name="base" select="$base"/>
-        </xsl:call-template>
+        <xsl:choose>
+          <xsl:when test="contains(normalize-space(@rev), ' ')">
+            <xsl:call-template name="rdfa:resolve-curie-list">
+              <xsl:with-param name="list" select="@rev"/>
+              <xsl:with-param name="node" select="."/>
+              <xsl:with-param name="base" select="$base"/>
+            </xsl:call-template>
+          </xsl:when>
+          <xsl:otherwise>
+            <xsl:call-template name="rdfa:resolve-curie">
+              <xsl:with-param name="curie" select="@rev"/>
+              <xsl:with-param name="node" select="."/>
+              <xsl:with-param name="base" select="$base"/>
+            </xsl:call-template>
+          </xsl:otherwise>
+        </xsl:choose>
         <xsl:text> </xsl:text>
       </xsl:variable>
 
@@ -1567,7 +1944,7 @@
 
 <xsl:template match="html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][not(@property) or (@property and @content)]" mode="rdfa:locate-rev-up">
   <xsl:param name="predicate" select="''"/>
-  <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:param name="base" select="normalize-space((ancestor-or-self::html:html/html:head/html:base[@href])[1]/@href)"/>
   <xsl:param name="probe" select="false()"/>
 
   <xsl:if test="$rdfa:DEBUG">
@@ -1583,7 +1960,7 @@
 
 <xsl:template match="html:*[@rev]" mode="rdfa:locate-rev-up">
   <xsl:param name="predicate" select="''"/>
-  <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:param name="base" select="normalize-space((ancestor-or-self::html:html/html:head/html:base[@href])[1]/@href)"/>
   <xsl:param name="include-self" select="false()"/>
   <xsl:param name="probe" select="false()"/>
 
@@ -1595,11 +1972,22 @@
     <xsl:otherwise>
       <xsl:variable name="_">
         <xsl:text> </xsl:text>
-        <xsl:call-template name="rdfa:resolve-curie-list">
-          <xsl:with-param name="list" select="@rev"/>
-          <xsl:with-param name="node" select="."/>
-          <xsl:with-param name="base" select="$base"/>
-        </xsl:call-template>
+        <xsl:choose>
+          <xsl:when test="contains(normalize-space(@rev), ' ')">
+            <xsl:call-template name="rdfa:resolve-curie-list">
+              <xsl:with-param name="list" select="@rev"/>
+              <xsl:with-param name="node" select="."/>
+              <xsl:with-param name="base" select="$base"/>
+            </xsl:call-template>
+          </xsl:when>
+          <xsl:otherwise>
+            <xsl:call-template name="rdfa:resolve-curie">
+              <xsl:with-param name="curie" select="@rev"/>
+              <xsl:with-param name="node" select="."/>
+              <xsl:with-param name="base" select="$base"/>
+            </xsl:call-template>
+          </xsl:otherwise>
+        </xsl:choose>
         <xsl:text> </xsl:text>
       </xsl:variable>
 
@@ -1629,7 +2017,7 @@
 <!-- this xpath is just copied so it might not be right or it might be -->
 <xsl:template match="html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][not(@property) or (@property and @content)]" mode="rdfa:locate-rev-up">
   <xsl:param name="predicate" select="''"/>
-  <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:param name="base" select="normalize-space((ancestor-or-self::html:html/html:head/html:base[@href])[1]/@href)"/>
   <xsl:param name="probe" select="false()"/>
 
   <xsl:if test="$rdfa:DEBUG">
@@ -1645,7 +2033,7 @@
 
 <xsl:template match="html:*[@rel or (not(@rel|@rev|@content|@datatype) and @property and @resource|@href|@src|@typeof)]" mode="rdfa:locate-rel-up">
   <xsl:param name="predicate" select="''"/>
-  <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:param name="base" select="normalize-space((ancestor-or-self::html:html/html:head/html:base[@href])[1]/@href)"/>
   <xsl:param name="include-self" select="false()"/>
   <xsl:param name="probe" select="false()"/>
 
@@ -1665,11 +2053,22 @@
 
       <xsl:variable name="_">
         <xsl:text> </xsl:text>
-        <xsl:call-template name="rdfa:resolve-curie-list">
-          <xsl:with-param name="list" select="$p"/>
-          <xsl:with-param name="node" select="."/>
-          <xsl:with-param name="base" select="$base"/>
-        </xsl:call-template>
+        <xsl:choose>
+          <xsl:when test="contains(normalize-space($p), ' ')">
+            <xsl:call-template name="rdfa:resolve-curie-list">
+              <xsl:with-param name="list" select="$p"/>
+              <xsl:with-param name="node" select="."/>
+              <xsl:with-param name="base" select="$base"/>
+            </xsl:call-template>
+          </xsl:when>
+          <xsl:otherwise>
+            <xsl:call-template name="rdfa:resolve-curie">
+              <xsl:with-param name="curie" select="$p"/>
+              <xsl:with-param name="node" select="."/>
+              <xsl:with-param name="base" select="$base"/>
+            </xsl:call-template>
+          </xsl:otherwise>
+        </xsl:choose>
         <xsl:text> </xsl:text>
       </xsl:variable>
 
@@ -1712,7 +2111,7 @@
 <xsl:template match="html:*|html:*/@*" mode="rdfa:subject-node">
   <xsl:param name="subject" select="''"/>
   <xsl:param name="predicate" select="''"/>
-  <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:param name="base" select="normalize-space((ancestor-or-self::html:html/html:head/html:base[@href])[1]/@href)"/>
   <xsl:param name="probe" select="false()"/>
   <xsl:param name="rdfa:DEBUG" select="false()"/>
 
@@ -1801,7 +2200,7 @@
 <xsl:template match="html:*|html:*/@*" mode="rdfa:object-node">
   <xsl:param name="predicate" select="''"/>
   <xsl:param name="object" select="''"/>
-  <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:param name="base" select="normalize-space((ancestor-or-self::html:html/html:head/html:base[@href])[1]/@href)"/>
   <xsl:variable name="probe" select="false()"/>
 
   <xsl:variable name="element" select="(self::*|..)[last()]"/>
@@ -1857,7 +2256,7 @@
   <xsl:param name="subject" select="''"/>
   <xsl:param name="predicate" select="''"/>
   <xsl:param name="current" select="."/>
-  <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:param name="base" select="normalize-space(($current/ancestor-or-self::html:html/html:head/html:base[@href])[1]/@href)"/>
   <xsl:param name="probe" select="false()"/>
   <xsl:param name="rdfa:DEBUG" select="false()"/>
 
@@ -1978,20 +2377,31 @@
   <xsl:param name="subject" select="''"/>
   <xsl:param name="predicate" select="''"/>
   <xsl:param name="current" select="."/>
-  <xsl:param name="local-base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:param name="local-base" select="normalize-space(($current/ancestor-or-self::html:html/html:head/html:base[@href])[1]/@href)"/>
   <xsl:param name="base" select="$local-base"/>
   <xsl:param name="rdfa:DEBUG" select="false()"/>
 
   <xsl:variable name="resource-list">
-    <xsl:call-template name="rdfa:resolve-curie-list">
-      <xsl:with-param name="list">
-        <xsl:call-template name="str:unique-tokens">
-          <xsl:with-param name="string" select="$subject"/>
+    <xsl:choose>
+      <xsl:when test="contains(normalize-space($subject), ' ')">
+        <xsl:call-template name="rdfa:resolve-curie-list">
+          <xsl:with-param name="list">
+            <xsl:call-template name="str:unique-tokens">
+              <xsl:with-param name="string" select="$subject"/>
+            </xsl:call-template>
+          </xsl:with-param>
+          <xsl:with-param name="node" select="$current"/>
+          <xsl:with-param name="base" select="$base"/>
         </xsl:call-template>
-      </xsl:with-param>
-      <xsl:with-param name="node" select="$current"/>
-      <xsl:with-param name="base" select="$base"/>
-    </xsl:call-template>
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:call-template name="rdfa:resolve-curie">
+          <xsl:with-param name="curie" select="$subject"/>
+          <xsl:with-param name="node" select="$current"/>
+          <xsl:with-param name="base" select="$base"/>
+        </xsl:call-template>
+      </xsl:otherwise>
+    </xsl:choose>
   </xsl:variable>
 
   <xsl:variable name="first-resource">
@@ -2049,20 +2459,31 @@
   <xsl:param name="predicate" select="''"/>
   <xsl:param name="object" select="''"/>
   <xsl:param name="current" select="."/>
-  <xsl:param name="local-base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:param name="local-base" select="normalize-space(($current/ancestor-or-self::html:html/html:head/html:base[@href])[1]/@href)"/>
   <xsl:param name="base" select="$local-base"/>
   <xsl:param name="rdfa:DEBUG" select="false()"/>
 
   <xsl:variable name="resource-list">
-    <xsl:call-template name="rdfa:resolve-curie-list">
-      <xsl:with-param name="list">
-        <xsl:call-template name="str:unique-tokens">
-          <xsl:with-param name="string" select="$object"/>
+    <xsl:choose>
+      <xsl:when test="contains(normalize-space($object), ' ')">
+        <xsl:call-template name="rdfa:resolve-curie-list">
+          <xsl:with-param name="list">
+            <xsl:call-template name="str:unique-tokens">
+              <xsl:with-param name="string" select="$object"/>
+            </xsl:call-template>
+          </xsl:with-param>
+          <xsl:with-param name="node" select="$current"/>
+          <xsl:with-param name="base" select="$base"/>
         </xsl:call-template>
-      </xsl:with-param>
-      <xsl:with-param name="node" select="$current"/>
-      <xsl:with-param name="base" select="$base"/>
-    </xsl:call-template>
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:call-template name="rdfa:resolve-curie">
+          <xsl:with-param name="curie" select="$object"/>
+          <xsl:with-param name="node" select="$current"/>
+          <xsl:with-param name="base" select="$base"/>
+        </xsl:call-template>
+      </xsl:otherwise>
+    </xsl:choose>
   </xsl:variable>
 
   <xsl:if test="$rdfa:DEBUG">
@@ -2097,11 +2518,26 @@
       <xsl:for-each select="key('rdfa:has-typeof', '')">
         <xsl:variable name="_">
           <xsl:text> </xsl:text>
-          <xsl:call-template name="rdfa:resolve-curie-list">
-            <xsl:with-param name="list" select="@typeof"/>
-            <xsl:with-param name="node" select="."/>
-            <xsl:with-param name="base" select="$base"/>
-          </xsl:call-template>
+          <xsl:choose>
+            <xsl:when test="contains(normalize-space(@typeof), ' ')">
+              <xsl:call-template name="rdfa:resolve-curie-list">
+                <xsl:with-param name="list">
+                  <xsl:call-template name="str:unique-tokens">
+                    <xsl:with-param name="string" select="@typeof"/>
+                  </xsl:call-template>
+                </xsl:with-param>
+                <xsl:with-param name="node" select="."/>
+                <xsl:with-param name="base" select="$base"/>
+              </xsl:call-template>
+            </xsl:when>
+            <xsl:otherwise>
+              <xsl:call-template name="rdfa:resolve-curie">
+                <xsl:with-param name="curie" select="@typeof"/>
+                <xsl:with-param name="node" select="."/>
+                <xsl:with-param name="base" select="$base"/>
+              </xsl:call-template>
+            </xsl:otherwise>
+          </xsl:choose>
           <xsl:text> </xsl:text>
         </xsl:variable>
 
@@ -2225,8 +2661,8 @@
 </xsl:template>
 
 <xsl:template name="rdfa:subjects-for-literal">
-  <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
   <xsl:param name="current"   select="."/>
+  <xsl:param name="base" select="normalize-space(($current/ancestor-or-self::html:html/html:head/html:base[@href])[1]/@href)"/>
   <xsl:param name="predicate" select="''"/>
   <xsl:param name="language"  select="''"/>
   <xsl:param name="datatype"  select="''"/>
@@ -2244,11 +2680,26 @@
                         key('rdfa:literal-text-node', $value)">
     <xsl:variable name="_">
       <xsl:text> </xsl:text>
-      <xsl:call-template name="rdfa:resolve-curie-list">
-        <xsl:with-param name="list" select="@property"/>
-        <xsl:with-param name="node" select="."/>
-        <xsl:with-param name="base" select="$base"/>
-      </xsl:call-template>
+      <xsl:choose>
+        <xsl:when test="contains(normalize-space(@property), ' ')">
+          <xsl:call-template name="rdfa:resolve-curie-list">
+            <xsl:with-param name="list">
+              <xsl:call-template name="str:unique-tokens">
+                <xsl:with-param name="string" select="@property"/>
+              </xsl:call-template>
+            </xsl:with-param>
+            <xsl:with-param name="node" select="."/>
+            <xsl:with-param name="base" select="$base"/>
+          </xsl:call-template>
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:call-template name="rdfa:resolve-curie">
+            <xsl:with-param name="curie" select="@property"/>
+            <xsl:with-param name="node" select="."/>
+            <xsl:with-param name="base" select="$base"/>
+          </xsl:call-template>
+        </xsl:otherwise>
+      </xsl:choose>
       <xsl:text> </xsl:text>
     </xsl:variable>
 
@@ -2265,7 +2716,7 @@
 </xsl:template>
 
 <xsl:template match="html:*|html:*/@*" mode="rdfa:literal-subject-node">
-  <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:param name="base" select="normalize-space((ancestor-or-self::html:html/html:head/html:base[@href])[1]/@href)"/>
   <xsl:param name="subject"   select="''"/>
   <xsl:param name="predicate" select="''"/>
   <xsl:param name="language"  select="''"/>
@@ -2304,7 +2755,7 @@
     <xsl:otherwise>
       <!-- descendant property -->
       <xsl:if test="$rdfa:DEBUG">
-        <xsl:message>LITERAL CALLED WITH OBJECT</xsl:message>
+        <xsl:message>LITERAL CALLED WITH OBJECT <xsl:apply-templates select="$element" mode="element-dump"/></xsl:message>
       </xsl:if>
       <xsl:apply-templates select="$element/html:*[@rel]|$element/html:*[not(@rel|@rev)][(@property and @content) or not(@property)]|$element/html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][not(@property) or (@property and @content)]" mode="rdfa:locate-property">
         <xsl:with-param name="predicate" select="$predicate"/>
@@ -2319,9 +2770,8 @@
 
 </xsl:template>
 
-<xsl:template name="rdfa:object-literal-internal">
-  <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
-  <xsl:param name="current"    select="."/>
+<xsl:template match="html:*" mode="rdfa:object-literal-internal">
+  <xsl:param name="base" select="normalize-space((ancestor-or-self::html:html/html:head/html:base[@href])[1]/@href)"/>
   <xsl:param name="subject"    select="''"/>
   <xsl:param name="predicate"  select="''"/>
   <xsl:param name="language"   select="''"/>
@@ -2454,12 +2904,12 @@
 </xsl:template>
 
 <xsl:template name="rdfa:object-literal-quick">
-  <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:param name="current"   select="."/>
+  <xsl:param name="base" select="normalize-space(($current/ancestor-or-self::html:html/html:head/html:base[@href])[1]/@href)"/>
   <xsl:param name="subject"   select="''"/>
   <xsl:param name="predicate" select="''"/>
   <xsl:param name="language"  select="''"/>
   <xsl:param name="datatype"  select="''"/>
-  <xsl:param name="current"   select="."/>
   <xsl:param name="record-sep" select="$rdfa:RECORD-SEP"/>
   <xsl:param name="unit-sep"   select="$rdfa:UNIT-SEP"/>
 
@@ -2473,13 +2923,13 @@
 
   <xsl:variable name="out">
     <xsl:variable name="_">
-    <xsl:call-template name="rdfa:object-literal-internal">
+    <xsl:apply-templates select="$current" mode="rdfa:object-literal-internal">
       <xsl:with-param name="subject"   select="$subject"/>
       <xsl:with-param name="predicate" select="$predicate-absolute"/>
       <xsl:with-param name="language"  select="$language"/>
       <xsl:with-param name="datatype"  select="$datatype"/>
       <xsl:with-param name="base"  select="$base"/>
-    </xsl:call-template>
+    </xsl:apply-templates>
     </xsl:variable>
 
     <xsl:variable name="esc" select="translate($_, '&#x09;&#x0a;&#x0d;&#x20;', '&#xf109;&#xf10a;&#xf10d;&#xf120;')"/>
@@ -2503,12 +2953,12 @@
 </xsl:template>
 
 <xsl:template name="rdfa:object-literals">
-  <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:param name="current"   select="."/>
+  <xsl:param name="base"      select="normalize-space(($current/ancestor-or-self::html:html/html:head/html:base[@href])[1]/@href)"/>
   <xsl:param name="subject"   select="''"/>
   <xsl:param name="predicate" select="''"/>
   <xsl:param name="language"  select="''"/>
   <xsl:param name="datatype"  select="''"/>
-  <xsl:param name="current"   select="."/>
   <xsl:param name="sanitize"  select="true()"/>
   <xsl:param name="prune"     select="true()"/>
   <xsl:param name="record-sep" select="$rdfa:RECORD-SEP"/>
@@ -2517,13 +2967,20 @@
 
   <xsl:variable name="resource-list">
     <xsl:choose>
-      <xsl:when test="$sanitize">
+      <xsl:when test="$sanitize and contains(normalize-space($subject), ' ')">
         <xsl:call-template name="rdfa:resolve-curie-list">
           <xsl:with-param name="list">
             <xsl:call-template name="str:unique-tokens">
               <xsl:with-param name="string" select="$subject"/>
             </xsl:call-template>
           </xsl:with-param>
+          <xsl:with-param name="node" select="$current"/>
+          <xsl:with-param name="base" select="$base"/>
+        </xsl:call-template>
+      </xsl:when>
+      <xsl:when test="$sanitize">
+        <xsl:call-template name="rdfa:resolve-curie">
+          <xsl:with-param name="curie" select="$subject"/>
           <xsl:with-param name="node" select="$current"/>
           <xsl:with-param name="base" select="$base"/>
         </xsl:call-template>
@@ -2585,14 +3042,14 @@
       <xsl:message>processing <xsl:value-of select="$first-resource"/></xsl:message>
     </xsl:if>
 
-    <xsl:call-template name="rdfa:object-literal-internal">
+    <xsl:apply-templates select="$current" mode="rdfa:object-literal-internal">
       <xsl:with-param name="subject"    select="$first-resource"/>
       <xsl:with-param name="predicate"  select="$predicate-absolute"/>
       <xsl:with-param name="language"   select="$language"/>
       <xsl:with-param name="datatype"   select="$datatype-absolute"/>
       <xsl:with-param name="base"       select="$base"/>
       <xsl:with-param name="rdfa:DEBUG" select="$rdfa:DEBUG"/>
-    </xsl:call-template>
+    </xsl:apply-templates>
 
     <xsl:if test="contains(normalize-space($resource-list), ' ')">
       <xsl:value-of select="$record-sep"/>
@@ -2602,6 +3059,7 @@
         <xsl:with-param name="language"  select="$language"/>
         <xsl:with-param name="datatype"  select="$datatype-absolute"/>
         <xsl:with-param name="base"      select="$base"/>
+        <xsl:with-param name="current"   select="$current"/>
         <xsl:with-param name="sanitize"  select="false()"/>
         <xsl:with-param name="prune"     select="false()"/>
         <xsl:with-param name="rdfa:DEBUG" select="$rdfa:DEBUG"/>
@@ -2650,15 +3108,26 @@
     <xsl:when test="string-length(normalize-space($subject))">
 
       <xsl:variable name="resource-list">
-        <xsl:call-template name="rdfa:resolve-curie-list">
-          <xsl:with-param name="list">
-            <xsl:call-template name="str:unique-tokens">
-              <xsl:with-param name="string" select="$subject"/>
+        <xsl:choose>
+          <xsl:when test="contains(normalize-space($subject), ' ')">
+            <xsl:call-template name="rdfa:resolve-curie-list">
+              <xsl:with-param name="list">
+                <xsl:call-template name="str:unique-tokens">
+                  <xsl:with-param name="string" select="$subject"/>
+                </xsl:call-template>
+              </xsl:with-param>
+              <xsl:with-param name="node" select="$current"/>
+              <xsl:with-param name="base" select="$base"/>
             </xsl:call-template>
-          </xsl:with-param>
-          <xsl:with-param name="node" select="$current"/>
-          <xsl:with-param name="base" select="$base"/>
-        </xsl:call-template>
+          </xsl:when>
+          <xsl:otherwise>
+            <xsl:call-template name="rdfa:resolve-curie">
+              <xsl:with-param name="curie" select="$subject"/>
+              <xsl:with-param name="node" select="$current"/>
+              <xsl:with-param name="base" select="$base"/>
+            </xsl:call-template>
+          </xsl:otherwise>
+        </xsl:choose>
       </xsl:variable>
 
       <xsl:variable name="first-resource">
@@ -2679,12 +3148,12 @@
           <xsl:with-param name="base"  select="$base"/>
           <xsl:with-param name="probe" select="true()"/>
         </xsl:call-template>
-        <xsl:call-template name="rdfa:object-literal-internal">
+        <xsl:apply-templates select="$current" mode="rdfa:object-literal-internal">
           <xsl:with-param name="subject"   select="$first-resource"/>
           <xsl:with-param name="predicate" select="$predicate-absolute"/>
           <xsl:with-param name="base"  select="$base"/>
           <xsl:with-param name="probe" select="true()"/>
-        </xsl:call-template>
+        </xsl:apply-templates>
       </xsl:variable>
 
       <!--<xsl:message><xsl:value-of select="$first-resource"/> has '<xsl:value-of select="$test"/>'</xsl:message>-->
@@ -2705,15 +3174,26 @@
     <xsl:when test="string-length(normalize-space($object))">
 
       <xsl:variable name="resource-list">
-        <xsl:call-template name="rdfa:resolve-curie-list">
-          <xsl:with-param name="list">
-            <xsl:call-template name="str:unique-tokens">
-              <xsl:with-param name="string" select="$object"/>
+        <xsl:choose>
+          <xsl:when test="contains(normalize-space($object), ' ')">
+            <xsl:call-template name="rdfa:resolve-curie-list">
+              <xsl:with-param name="list">
+                <xsl:call-template name="str:unique-tokens">
+                  <xsl:with-param name="string" select="$object"/>
+                </xsl:call-template>
+              </xsl:with-param>
+              <xsl:with-param name="node" select="$current"/>
+              <xsl:with-param name="base" select="$base"/>
             </xsl:call-template>
-          </xsl:with-param>
-          <xsl:with-param name="node" select="$current"/>
-          <xsl:with-param name="base" select="$base"/>
-        </xsl:call-template>
+          </xsl:when>
+          <xsl:otherwise>
+            <xsl:call-template name="rdfa:resolve-curie">
+              <xsl:with-param name="curie" select="$object"/>
+              <xsl:with-param name="node" select="$current"/>
+              <xsl:with-param name="base" select="$base"/>
+            </xsl:call-template>
+          </xsl:otherwise>
+        </xsl:choose>
       </xsl:variable>
 
       <xsl:variable name="first-resource">
@@ -2736,6 +3216,120 @@
     <xsl:with-param name="string" select="$out"/>
   </xsl:call-template>
 
+</xsl:template>
+
+<!-- you give this a node and it tells you the subject -->
+
+<xsl:template match="html:*[ancestor::*[@property]]" mode="rdfa:get-subject" priority="10"/>
+
+<xsl:template match="html:*[@about]" mode="rdfa:get-subject">
+  <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:call-template name="rdfa:resolve-curie">
+    <xsl:with-param name="curie" select="@about"/>
+    <xsl:with-param name="base" select="$base"/>
+  </xsl:call-template>
+</xsl:template>
+
+<xsl:template match="html:*[@resource][not(@about)]" mode="rdfa:get-subject">
+  <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:call-template name="rdfa:resolve-curie">
+    <xsl:with-param name="curie" select="@resource"/>
+    <xsl:with-param name="base" select="$base"/>
+  </xsl:call-template>
+</xsl:template>
+
+<xsl:template match="html:*[@href][not(@about|@resource)]" mode="rdfa:get-subject">
+  <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:call-template name="uri:make-absolute-uri">
+    <xsl:with-param name="uri" select="@href"/>
+    <xsl:with-param name="base" select="$base"/>
+  </xsl:call-template>
+</xsl:template>
+
+<xsl:template match="html:*[@src][not(@about|@resource|@href)]" mode="rdfa:get-subject">
+  <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:call-template name="uri:make-absolute-uri">
+    <xsl:with-param name="uri" select="@src"/>
+    <xsl:with-param name="base" select="$base"/>
+  </xsl:call-template>
+</xsl:template>
+
+<xsl:template match="html:*[@typeof][not(@about|@resource|@href|@src)]" mode="rdfa:get-subject">
+  <xsl:value-of select="concat('_:', generate-id(.))"/>
+</xsl:template>
+
+<xsl:template match="html:head[not(@about|@resource|@href|@src)]|html:body[not(@about|@resource|@href|@src)]" mode="rdfa:get-subject">
+  <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:if test="$rdfa:DEBUG">
+    <xsl:message>Special case for head/body</xsl:message>
+  </xsl:if>
+  <xsl:apply-templates select=".." mode="rdfa:get-subject-up">
+    <xsl:with-param name="base" select="$base"/>
+  </xsl:apply-templates>
+</xsl:template>
+
+<xsl:template match="html:*[not(parent::html:*)][not(@about|@resource|@href|@src)]" mode="rdfa:get-subject">
+  <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:if test="$rdfa:DEBUG">
+    <xsl:message>Special case for root element</xsl:message>
+  </xsl:if>
+  <xsl:value-of select="$base"/>
+</xsl:template>
+
+<xsl:template match="html:*[not(@about|@typeof|@resource|@href|@src)]" mode="rdfa:get-subject">
+  <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:if test="$rdfa:DEBUG">
+    <xsl:message>searching parent element for RDF</xsl:message>
+  </xsl:if>
+  <xsl:apply-templates select=".." mode="rdfa:_get-subject-up">
+    <xsl:with-param name="base" select="$base"/>
+  </xsl:apply-templates>
+</xsl:template>
+
+<xsl:template match="html:*[not(@about|@typeof|@resource|@href|@src)]" mode="rdfa:_get-subject-up">
+  <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:if test="$rdfa:DEBUG">
+    <xsl:message>searching parent element for RDF</xsl:message>
+  </xsl:if>
+  <xsl:apply-templates select=".." mode="rdfa:get-subject-up">
+    <xsl:with-param name="base" select="$base"/>
+  </xsl:apply-templates>
+</xsl:template>
+
+<xsl:template match="html:*[@resource]" mode="rdfa:_get-subject-up">
+  <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:call-template name="rdfa:resolve-curie">
+    <xsl:with-param name="curie" select="@resource"/>
+    <xsl:with-param name="base" select="$base"/>
+  </xsl:call-template>
+</xsl:template>
+
+<xsl:template match="html:*[@href][not(@resource)]" mode="rdfa:_get-subject-up">
+  <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:call-template name="uri:make-absolute-uri">
+    <xsl:with-param name="uri" select="@href"/>
+    <xsl:with-param name="base" select="$base"/>
+  </xsl:call-template>
+</xsl:template>
+
+<xsl:template match="html:*[@src][not(@resource|@href)]" mode="rdfa:_get-subject-up">
+  <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:call-template name="uri:make-absolute-uri">
+    <xsl:with-param name="uri" select="@src"/>
+    <xsl:with-param name="base" select="$base"/>
+  </xsl:call-template>
+</xsl:template>
+
+<xsl:template match="html:*[@about][not(@resource|@href|@src)]" mode="rdfa:_get-subject-up">
+  <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:call-template name="rdfa:resolve-curie">
+    <xsl:with-param name="curie" select="@resource"/>
+    <xsl:with-param name="base" select="$base"/>
+  </xsl:call-template>
+</xsl:template>
+
+<xsl:template match="html:*[@typeof][not(@about|@resource|@href|@src)]" mode="rdfa:_get-subject-up">
+  <xsl:value-of select="concat('_:', generate-id(.))"/>
 </xsl:template>
 
 </xsl:stylesheet>
