@@ -983,6 +983,9 @@
 <xsl:variable name="prefix" select="substring-before($content, ':')"/>
 
 <xsl:choose>
+  <xsl:when test="contains($content, '://')">
+    <xsl:value-of select="$content"/>
+  </xsl:when>
   <xsl:when test="contains($content, ':') and contains($prefixes, concat(' ', $prefix, ': '))">
     <xsl:variable name="slug" select="substring-after($content, ':')"/>
     <xsl:variable name="ns" select="substring-before(substring-after($prefixes, concat(' ', $prefix, ': ')), ' ')"/>
@@ -3026,7 +3029,6 @@
     </xsl:for-each>
   </xsl:if>
 
-
   <xsl:apply-templates select="key('rdfa:uri-node', $resource)|$blank-nodes|$root-nodes|$rel-strict-nodes|$rel-lax-nodes|$rel-full-nodes|$qs-only-nodes|$curie-nodes" mode="rdfa:literal-subject-node">
     <xsl:with-param name="subject"   select="$resource"/>
     <xsl:with-param name="predicate" select="$predicate"/>
@@ -3036,8 +3038,8 @@
     <xsl:with-param name="probe" select="$probe"/>
     <xsl:with-param name="debug" select="$debug"/>
   </xsl:apply-templates>
-
 </xsl:template>
+
 
 <xsl:template match="html:*" mode="rdfa:object-literal-quick" name="rdfa:object-literal-quick">
   <xsl:param name="current"   select="."/>
@@ -3375,45 +3377,67 @@
 
 <!-- you give this a node and it tells you the subject -->
 
-<xsl:template match="html:*[ancestor::*[@property]]" mode="rdfa:get-subject" priority="10"/>
+<xsl:template match="html:*[ancestor::*[@property][not(@content)]]" mode="rdfa:get-subject" priority="10">
+  <xsl:message>hit <xsl:value-of select="$name"/></xsl:message>
+</xsl:template>
 
-<xsl:template match="html:*[@about]" mode="rdfa:get-subject">
+<xsl:template match="html:*[@about]" mode="rdfa:get-subject" priority="5">
   <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:param name="debug" select="$rdfa:DEBUG"/>
+  <xsl:if test="$debug">
+    <xsl:message>Found @about <xsl:value-of select="@about"/></xsl:message>
+  </xsl:if>
   <xsl:call-template name="rdfa:resolve-curie">
     <xsl:with-param name="curie" select="@about"/>
     <xsl:with-param name="base" select="$base"/>
   </xsl:call-template>
 </xsl:template>
 
-<xsl:template match="html:*[@resource][not(@about)]" mode="rdfa:get-subject">
+<xsl:template match="html:*[@resource][not(@about)]" mode="rdfa:get-subject" priority="4.5">
   <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:param name="debug" select="$rdfa:DEBUG"/>
+  <xsl:if test="$debug">
+    <xsl:message>Found @resource <xsl:value-of select="@resource"/></xsl:message>
+  </xsl:if>
   <xsl:call-template name="rdfa:resolve-curie">
     <xsl:with-param name="curie" select="@resource"/>
     <xsl:with-param name="base" select="$base"/>
   </xsl:call-template>
 </xsl:template>
 
-<xsl:template match="html:*[@href][not(@about|@resource)]" mode="rdfa:get-subject">
+<xsl:template match="html:*[@href][not(@about|@resource)]" mode="rdfa:get-subject" priority="4">
   <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:param name="debug" select="$rdfa:DEBUG"/>
+  <xsl:if test="$debug">
+    <xsl:message>Found @href <xsl:value-of select="@href"/></xsl:message>
+  </xsl:if>
   <xsl:call-template name="uri:make-absolute-uri">
     <xsl:with-param name="uri" select="@href"/>
     <xsl:with-param name="base" select="$base"/>
   </xsl:call-template>
 </xsl:template>
 
-<xsl:template match="html:*[@src][not(@about|@resource|@href)]" mode="rdfa:get-subject">
+<xsl:template match="html:*[@src][not(@about|@resource|@href)]" mode="rdfa:get-subject" priority="3.5">
   <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:param name="debug" select="$rdfa:DEBUG"/>
+  <xsl:if test="$debug">
+    <xsl:message>Found @src <xsl:value-of select="@src"/></xsl:message>
+  </xsl:if>
   <xsl:call-template name="uri:make-absolute-uri">
     <xsl:with-param name="uri" select="@src"/>
     <xsl:with-param name="base" select="$base"/>
   </xsl:call-template>
 </xsl:template>
 
-<xsl:template match="html:*[@typeof][not(@about|@resource|@href|@src)]" mode="rdfa:get-subject">
+<xsl:template match="html:*[@typeof][not(@about|@resource|@href|@src)]" mode="rdfa:get-subject" priority="3">
+  <xsl:param name="debug" select="$rdfa:DEBUG"/>
+  <xsl:if test="$debug">
+    <xsl:message>Found blank node <xsl:value-of select="generate-id(.)"/></xsl:message>
+  </xsl:if>
   <xsl:value-of select="concat('_:', generate-id(.))"/>
 </xsl:template>
 
-<xsl:template match="html:head[not(@about|@resource|@href|@src)]|html:body[not(@about|@resource|@href|@src)]" mode="rdfa:get-subject">
+<xsl:template match="html:head[not(@about|@resource|@href|@src)]|html:body[not(@about|@resource|@href|@src)]" mode="rdfa:get-subject" priority="5">
   <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
   <xsl:param name="debug" select="$rdfa:DEBUG"/>
   <xsl:if test="$debug">
@@ -3421,10 +3445,11 @@
   </xsl:if>
   <xsl:apply-templates select="parent::html:*" mode="rdfa:_get-subject-up">
     <xsl:with-param name="base" select="$base"/>
+    <xsl:with-param name="debug" select="$debug"/>
   </xsl:apply-templates>
 </xsl:template>
 
-<xsl:template match="html:*[not(parent::html:*)][not(@about|@resource|@href|@src)]" mode="rdfa:get-subject">
+<xsl:template match="html:*[not(parent::html:*)][not(@about|@resource|@href|@src)]" mode="rdfa:get-subject" priority="5">
   <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
   <xsl:param name="debug" select="$rdfa:DEBUG"/>
   <xsl:if test="$debug">
@@ -3437,12 +3462,15 @@
   <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
   <xsl:param name="debug" select="$rdfa:DEBUG"/>
   <xsl:if test="$debug">
-    <xsl:message>searching parent element for RDF</xsl:message>
+    <xsl:message>Searching parent element (<xsl:value-of select="name(parent::html:*)"/>) for RDF</xsl:message>
   </xsl:if>
   <xsl:apply-templates select="parent::html:*" mode="rdfa:_get-subject-up">
     <xsl:with-param name="base" select="$base"/>
+    <xsl:with-param name="debug" select="$debug"/>
   </xsl:apply-templates>
 </xsl:template>
+
+<!-- now ascending -->
 
 <xsl:template match="html:*[not(@about|@typeof|@resource|@href|@src)]" mode="rdfa:_get-subject-up">
   <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
@@ -3452,39 +3480,77 @@
   </xsl:if>
   <xsl:apply-templates select="parent::html:*" mode="rdfa:_get-subject-up">
     <xsl:with-param name="base" select="$base"/>
+    <xsl:with-param name="debug" select="$debug"/>
   </xsl:apply-templates>
 </xsl:template>
 
-<xsl:template match="html:*[@resource]" mode="rdfa:_get-subject-up">
+<xsl:template match="html:*[@resource]" mode="rdfa:_get-subject-up" priority="5">
   <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:param name="debug" select="$rdfa:DEBUG"/>
+  <xsl:if test="$debug">
+    <xsl:message>Found @resource (ascending) <xsl:value-of select="@resource"/></xsl:message>
+  </xsl:if>
   <xsl:call-template name="rdfa:resolve-curie">
     <xsl:with-param name="curie" select="@resource"/>
     <xsl:with-param name="base" select="$base"/>
   </xsl:call-template>
 </xsl:template>
 
-<xsl:template match="html:*[@href][not(@resource)]" mode="rdfa:_get-subject-up">
+<xsl:template match="html:*[@href][not(@resource)]" mode="rdfa:_get-subject-up" priority="4.5">
   <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:param name="debug" select="$rdfa:DEBUG"/>
+  <xsl:if test="$debug">
+    <xsl:message>Found @href (ascending) <xsl:value-of select="@href"/></xsl:message>
+  </xsl:if>
   <xsl:call-template name="uri:make-absolute-uri">
     <xsl:with-param name="uri" select="@href"/>
     <xsl:with-param name="base" select="$base"/>
   </xsl:call-template>
 </xsl:template>
 
-<xsl:template match="html:*[@src][not(@resource|@href)]" mode="rdfa:_get-subject-up">
+<xsl:template match="html:*[@src][not(@resource|@href)]" mode="rdfa:_get-subject-up" priority="4">
   <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:param name="debug" select="$rdfa:DEBUG"/>
+  <xsl:if test="$debug">
+    <xsl:message>Found @src (ascending) <xsl:value-of select="@src"/></xsl:message>
+  </xsl:if>
   <xsl:call-template name="uri:make-absolute-uri">
     <xsl:with-param name="uri" select="@src"/>
     <xsl:with-param name="base" select="$base"/>
   </xsl:call-template>
 </xsl:template>
 
-<xsl:template match="html:*[@about][not(@resource|@href|@src)]" mode="rdfa:_get-subject-up">
+<xsl:template match="html:*[@about][not(@resource|@href|@src)]" mode="rdfa:_get-subject-up" priority="3.5">
   <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:param name="debug" select="$rdfa:DEBUG"/>
+  <xsl:if test="$debug">
+    <xsl:message>Found @about (ascending) <xsl:value-of select="@about"/></xsl:message>
+  </xsl:if>
   <xsl:call-template name="rdfa:resolve-curie">
-    <xsl:with-param name="curie" select="@resource"/>
+    <xsl:with-param name="curie" select="@about"/>
     <xsl:with-param name="base" select="$base"/>
   </xsl:call-template>
+</xsl:template>
+
+<xsl:template match="html:head[not(@about|@resource|@href|@src)]|html:body[not(@about|@resource|@href|@src)]" mode="rdfa:_get-subject-up" priority="5">
+  <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:param name="debug" select="$rdfa:DEBUG"/>
+  <xsl:if test="$debug">
+    <xsl:message>Special case for head/body</xsl:message>
+  </xsl:if>
+  <xsl:apply-templates select="parent::html:*" mode="rdfa:_get-subject-up">
+    <xsl:with-param name="base" select="$base"/>
+    <xsl:with-param name="debug" select="$debug"/>
+  </xsl:apply-templates>
+</xsl:template>
+
+<xsl:template match="html:*[not(parent::html:*)][not(@about|@resource|@href|@src)]" mode="rdfa:_get-subject-up" priority="5">
+  <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:param name="debug" select="$rdfa:DEBUG"/>
+  <xsl:if test="$debug">
+    <xsl:message>Special case for root element</xsl:message>
+  </xsl:if>
+  <xsl:value-of select="$base"/>
 </xsl:template>
 
 <xsl:template match="html:*[@typeof][not(@about|@resource|@href|@src)]" mode="rdfa:_get-subject-up">
