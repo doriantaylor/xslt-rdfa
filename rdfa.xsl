@@ -1788,7 +1788,7 @@
 <xsl:template match="*|@*" mode="rdfa:locate-property">
   <xsl:message terminate="yes">THIS SHOULD NEVER BE RUN</xsl:message>
 </xsl:template>
-<xsl:template match="html:*" mode="rdfa:locate-property"/><!--
+<xsl:template xmlns:svg="http://www.w3.org/2000/svg" match="html:*|svg:*" mode="rdfa:locate-property"/><!--
   <xsl:message terminate="yes">THIS SHOULD NEVER BE RUN <xsl:apply-templates select="." mode="element-dump"/></xsl:message>
 </xsl:template>-->
 
@@ -2574,7 +2574,7 @@
 
 </xsl:template>
 
-<xsl:template name="rdfa:subject-resources">
+<xsl:template match="html:*" mode="rdfa:subject-resources" name="rdfa:subject-resources">
   <xsl:param name="predicate" select="''"/>
   <xsl:param name="object" select="''"/>
   <xsl:param name="current" select="."/>
@@ -2771,8 +2771,10 @@
     <xsl:call-template name="rdfa:subject-resources">
       <xsl:with-param name="predicate" select="$predicate-absolute"/>
       <xsl:with-param name="object" select="substring-after(normalize-space($resource-list), ' ')"/>
-      <xsl:with-param name="base" select="$base"/>
-    </xsl:call-template>
+      <xsl:with-param name="current"    select="$current"/>
+      <xsl:with-param name="base"       select="$base"/>
+      <xsl:with-param name="debug"      select="$debug"/>
+   </xsl:call-template>
   </xsl:if>
   </xsl:variable>
 
