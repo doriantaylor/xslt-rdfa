@@ -789,11 +789,14 @@
   <xsl:variable name="_norm" select="normalize-space($string)"/>
 
   <xsl:choose>
-    <xsl:when test="$_norm  = ''"><xsl:value-of select="$cache"/></xsl:when>
+    <xsl:when test="$_norm  = ''">
+      <xsl:value-of select="normalize-space($cache)"/>
+    </xsl:when>
     <xsl:when test="contains($_norm, ' ')">
       <xsl:variable name="first" select="substring-before($_norm, ' ')"/>
       <xsl:variable name="rest"  select="substring-after($_norm, ' ')"/>
 
+      <!-- cache always has a trailing space if not empty -->
       <xsl:variable name="cache-out">
         <xsl:choose>
         <xsl:when test="contains(concat(' ', $rest, ' '), concat(' ', $first, ' '))">
@@ -813,10 +816,10 @@
           </xsl:call-template>
         </xsl:when>
         <xsl:when test="contains(concat(' ', $cache-out, ' '), concat(' ' , $rest, ' '))">
-          <xsl:value-of select="$cache-out"/>
+          <xsl:value-of select="normalize-space($cache-out)"/>
         </xsl:when>
         <xsl:otherwise>
-          <xsl:value-of select="concat($cache-out, $rest, ' ')"/>
+          <xsl:value-of select="concat($cache-out, $rest)"/>
         </xsl:otherwise>
       </xsl:choose>
 
@@ -2592,7 +2595,7 @@
     </xsl:when>
     <xsl:otherwise>
       <xsl:call-template name="str:unique-tokens">
-        <xsl:with-param name="string" select="normalize-space($raw-resource-list)"/>
+        <xsl:with-param name="string" select="$raw-resource-list"/>
       </xsl:call-template>
     </xsl:otherwise>
   </xsl:choose>
@@ -2836,7 +2839,7 @@
     </xsl:when>
     <xsl:otherwise>
       <xsl:call-template name="str:unique-tokens">
-        <xsl:with-param name="string" select="normalize-space($raw-resource-list)"/>
+        <xsl:with-param name="string" select="$raw-resource-list"/>
       </xsl:call-template>
     </xsl:otherwise>
   </xsl:choose>
@@ -3437,7 +3440,7 @@
 <!-- you give this a node and it tells you the subject -->
 
 <xsl:template match="html:*[ancestor::*[@property][not(@content)]]" mode="rdfa:get-subject" priority="10">
-  <xsl:message>hit <xsl:value-of select="$name"/></xsl:message>
+  <xsl:message>hit <xsl:value-of select="name()"/></xsl:message>
 </xsl:template>
 
 <xsl:template match="html:*[@about]" mode="rdfa:get-subject" priority="5">
