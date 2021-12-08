@@ -1528,7 +1528,7 @@
 <!-- WHAT WE WERE ORIGINALLY WORKING ON -->
 
 <xsl:template match="*|@*" mode="rdfa:resource-down">
-  <xsl:message terminate="yes">THIS SHOULD NEVER GET RUN</xsl:message>
+  <xsl:message terminate="yes">THIS rdfa:resource-down SHOULD NEVER GET RUN</xsl:message>
 </xsl:template>
 
 <xsl:template match="html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][(@property and @content) or not(@property)]" mode="rdfa:resource-down">
@@ -1615,7 +1615,7 @@
 <!-- html:*[@rel or (not(@rel|@rev|@content|@datatype) and @property and @resource|@href|@src|@typeof] -->
 
 <xsl:template match="*|@*" mode="rdfa:locate-rel-down">
-<xsl:message terminate="yes">THIS SHOULD NEVER GET RUN</xsl:message>
+<xsl:message terminate="yes">THIS rdfa:locate-rel-down SHOULD NEVER GET RUN</xsl:message>
 </xsl:template>
 
 <xsl:template match="html:*" mode="rdfa:locate-rel-down">
@@ -1788,12 +1788,12 @@
 
 </xsl:template>
 
-<xsl:template match="*|@*" mode="rdfa:locate-property">
-  <xsl:message terminate="yes">THIS SHOULD NEVER BE RUN</xsl:message>
-</xsl:template>
 <xsl:template xmlns:svg="http://www.w3.org/2000/svg" match="html:*|svg:*" mode="rdfa:locate-property"/><!--
   <xsl:message terminate="yes">THIS SHOULD NEVER BE RUN <xsl:apply-templates select="." mode="element-dump"/></xsl:message>
 </xsl:template>-->
+<xsl:template match="*|@*" mode="rdfa:locate-property">
+  <xsl:message terminate="yes">THIS rdfa:locate-property SHOULD NEVER BE RUN</xsl:message>
+</xsl:template>
 
 <!--<xsl:template match=:html:*[not(@property) and (not(@rel|@rev) or @re-->
 
