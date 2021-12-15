@@ -40,7 +40,8 @@
 <xsl:key name="rdfa:uri-node" match="html:*[@about]/@about|html:*[@resource]/@resource|html:*[@href][not(@resource)]/@href|html:*[@src][not(@resource|@href)]/@src" use="normalize-space(.)"/>
 
 <xsl:key name="rdfa:literal-content-node" match="html:*[@property][@content]" use="@content"/>
-<xsl:key name="rdfa:literal-text-node" match="html:*[@property][not(@content)][@rel|@rev or not((@typeof and not(@about)) or @resource|@href|@src)]" use="string(.)"/>
+<xsl:key name="rdfa:literal-datetime-node" match="html:*[@property][@datetime]" use="@content"/>
+<xsl:key name="rdfa:literal-text-node" match="html:*[@property][not(@content|@datetime)][@rel|@rev or not((@typeof and not(@about)) or @resource|@href|@src)]" use="string(.)"/>
 
 <!--
     we work it like this:
@@ -1248,7 +1249,7 @@
 
 -->
 
-<xsl:template match="html:*[not(@rel|@rev)][@property][not(@content|@datatype)]" mode="rdfa:new-subject">
+<xsl:template match="html:*[not(@rel|@rev)][@property][not(@content|@datetime|@datatype)]" mode="rdfa:new-subject">
   <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
 
   <xsl:choose>
@@ -1342,7 +1343,7 @@
   </xsl:choose>
 </xsl:template>
 
-<xsl:template match="html:*[not(@rel|@rev)][@property][not(@content|@datatype)][@typeof]" mode="rdfa:current-object-resource">
+<xsl:template match="html:*[not(@rel|@rev)][@property][not(@content|@datetime|@datatype)][@typeof]" mode="rdfa:current-object-resource">
   <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
   
   <xsl:choose>
@@ -1489,10 +1490,10 @@
      subject or object -->
 <xsl:template match="html:*|html:*/@*" mode="rdfa:is-subject"/>
 <xsl:template match="html:*/@about|
-                     html:*[not(@rel|@rev|@about)][not(@property) or (@property and @content|@datatype)]/@resource|
-                     html:*[not(@rel|@rev|@about|@resource)][not(@property) or (@property and @content|@datatype)]/@href|
-                     html:*[not(@rel|@rev|@about|@resource|@href)][not(@property) or (@property and @content|@datatype)]/@src|
-                     html:*[@typeof][not(@about|@rel|@rev)][not(@property) or (@property and @content|@datatype)]|
+                     html:*[not(@rel|@rev|@about)][not(@property) or (@property and @content|@datetime|@datatype)]/@resource|
+                     html:*[not(@rel|@rev|@about|@resource)][not(@property) or (@property and @content|@datetime|@datatype)]/@href|
+                     html:*[not(@rel|@rev|@about|@resource|@href)][not(@property) or (@property and @content|@datetime|@datatype)]/@src|
+                     html:*[@typeof][not(@about|@rel|@rev)][not(@property) or (@property and @content|@datetime|@datatype)]|
                      html:body|html:head|html:html" mode="rdfa:is-subject">
   <xsl:value-of select="true()"/>
 </xsl:template>
@@ -1531,7 +1532,7 @@
   <xsl:message terminate="yes">THIS rdfa:resource-down SHOULD NEVER GET RUN</xsl:message>
 </xsl:template>
 
-<xsl:template match="html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][(@property and @content) or not(@property)]" mode="rdfa:resource-down">
+<xsl:template match="html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][(@property and @content|@datetime) or not(@property)]" mode="rdfa:resource-down">
   <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
 
   <xsl:if test="$rdfa:DEBUG">
@@ -1543,7 +1544,7 @@
   </xsl:apply-templates>
 </xsl:template>
 
-<xsl:template match="html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][(@property and @content) or not(@property)]" mode="rdfa:resource-up">
+<xsl:template match="html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][(@property and @content|@datetime) or not(@property)]" mode="rdfa:resource-up">
   <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
 
   <xsl:if test="$rdfa:DEBUG">
@@ -1625,7 +1626,7 @@
   </xsl:if>
 </xsl:template>
 
-<xsl:template match="html:*[not(@rel|@rev|@resource|@href|@src)][not(@property) or (@property and @content)]" mode="rdfa:locate-rel-down">
+<xsl:template match="html:*[not(@rel|@rev|@resource|@href|@src)][not(@property) or (@property and @content|@datetime)]" mode="rdfa:locate-rel-down">
   <xsl:param name="predicate" select="''"/>
   <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
   <xsl:param name="include-self" select="false()"/>
@@ -1641,7 +1642,7 @@
   </xsl:if>
 
   <xsl:if test="$include-self or not(@about|@typeof)">
-    <xsl:apply-templates select="html:*[@rel]|html:*[not(@rel|@rev)][@property and @resource|@href|@src|@typeof]|html:*[not(@rel|@rev|@resource|@href|@src)][not(@property) or (@property and @content)]" mode="rdfa:locate-rel-down">
+    <xsl:apply-templates select="html:*[@rel]|html:*[not(@rel|@rev)][@property and @resource|@href|@src|@typeof]|html:*[not(@rel|@rev|@resource|@href|@src)][not(@property) or (@property and @content|@datetime)]" mode="rdfa:locate-rel-down">
     <!--<xsl:apply-templates select="html:*" mode="rdfa:locate-rel-down">-->
       <xsl:with-param name="predicate" select="$predicate"/>
       <xsl:with-param name="base" select="$base"/>
@@ -1651,7 +1652,7 @@
   </xsl:if>
 </xsl:template>
 
-<xsl:template match="html:*[@rel or (not(@rel|@rev|@content|@datatype) and @property and @resource|@href|@src|@typeof)]" mode="rdfa:locate-rel-down">
+<xsl:template match="html:*[@rel or (not(@rel|@rev|@content|@datetime|@datatype) and @property and @resource|@href|@src|@typeof)]" mode="rdfa:locate-rel-down">
   <xsl:param name="predicate" select="''"/>
   <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
   <xsl:param name="include-self" select="false()"/>
@@ -1897,6 +1898,9 @@
         <xsl:when test="@content">
           <xsl:value-of select="@content"/>
         </xsl:when>
+        <xsl:when test="@datetime">
+          <xsl:value-of select="@datetime"/>
+        </xsl:when>
         <xsl:otherwise><xsl:value-of select="string(.)"/></xsl:otherwise>
       </xsl:choose>
       <xsl:if test="not(string-length($datatype) or string-length($language))">
@@ -1914,7 +1918,7 @@
       </xsl:if>
       <xsl:value-of select="$rdfa:RECORD-SEP"/>
     </xsl:when>
-    <xsl:when test="@content and not(@rel|@rev|@resource|@href|src) and ($include-self or not(@about|@typeof))">
+    <xsl:when test="@content|@datetime and not(@rel|@rev|@resource|@href|src) and ($include-self or not(@about|@typeof))">
       <xsl:apply-templates select="html:*" mode="rdfa:locate-property">
         <xsl:with-param name="base" select="$base"/>
         <xsl:with-param name="predicate" select="$predicate"/>
@@ -1937,7 +1941,7 @@
 </xsl:if>
 </xsl:template>
 
-<xsl:template match="html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][not(@property) or (@property and @content)]" mode="rdfa:locate-rev-down">
+<xsl:template match="html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][not(@property) or (@property and @content|@datetime)]" mode="rdfa:locate-rev-down">
   <xsl:param name="predicate" select="''"/>
   <xsl:param name="base" select="normalize-space((ancestor-or-self::html:html/html:head/html:base[@href])[1]/@href)"/>
   <xsl:param name="probe" select="false()"/>
@@ -1947,7 +1951,7 @@
     <xsl:message>CALLED REV PASSTHRU ON <xsl:value-of select="local-name()"/></xsl:message>
   </xsl:if>
 
-  <xsl:apply-templates select="html:*[@rev]|html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][not(@property) or (@property and @content)]" mode="rdfa:locate-rev-down">
+  <xsl:apply-templates select="html:*[@rev]|html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][not(@property) or (@property and @content|@datetime)]" mode="rdfa:locate-rev-down">
     <xsl:with-param name="predicate" select="$predicate"/>
     <xsl:with-param name="base" select="$base"/>
     <xsl:with-param name="probe" select="$probe"/>
@@ -2041,7 +2045,7 @@
 </xsl:if>
 </xsl:template>
 
-<xsl:template match="html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][not(@property) or (@property and @content)]" mode="rdfa:locate-rev-up">
+<xsl:template match="html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][not(@property) or (@property and @content|@datetime)]" mode="rdfa:locate-rev-up">
   <xsl:param name="predicate" select="''"/>
   <xsl:param name="base" select="normalize-space((ancestor-or-self::html:html/html:head/html:base[@href])[1]/@href)"/>
   <xsl:param name="probe" select="false()"/>
@@ -2051,7 +2055,7 @@
     <xsl:message>CALLED REV PASSTHRU ON <xsl:value-of select="local-name()"/></xsl:message>
   </xsl:if>
 
-  <xsl:apply-templates select="parent::html:*[@rev]|parent::html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][not(@property) or (@property and @content)]" mode="rdfa:locate-rev-up">
+  <xsl:apply-templates select="parent::html:*[@rev]|parent::html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][not(@property) or (@property and @content|@datetime)]" mode="rdfa:locate-rev-up">
     <xsl:with-param name="predicate" select="$predicate"/>
     <xsl:with-param name="base" select="$base"/>
     <xsl:with-param name="probe" select="$probe"/>
@@ -2119,7 +2123,7 @@
 <xsl:template match="html:*" mode="rdfa:locate-rel-up"/>
 
 <!-- this xpath is just copied so it might not be right or it might be -->
-<xsl:template match="html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][not(@property) or (@property and @content)]" mode="rdfa:locate-rev-up">
+<xsl:template match="html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][not(@property) or (@property and @content|@datetime)]" mode="rdfa:locate-rev-up">
   <xsl:param name="predicate" select="''"/>
   <xsl:param name="base" select="normalize-space((ancestor-or-self::html:html/html:head/html:base[@href])[1]/@href)"/>
   <xsl:param name="probe" select="false()"/>
@@ -2129,7 +2133,7 @@
     <xsl:message>CALLED REL UP PASSTHRU ON <xsl:value-of select="local-name()"/></xsl:message>
   </xsl:if>
 
-  <xsl:apply-templates select="parent::html:*[@rel or (not(@rel|@rev|@content|@datatype) and @property and @resource|@href|@src|@typeof)]|parent::html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][not(@property) or (@property and @content)]" mode="rdfa:locate-rev-up">
+  <xsl:apply-templates select="parent::html:*[@rel or (not(@rel|@rev|@content|@datetime|@datatype) and @property and @resource|@href|@src|@typeof)]|parent::html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][not(@property) or (@property and @content|@datetime)]" mode="rdfa:locate-rev-up">
     <xsl:with-param name="predicate" select="$predicate"/>
     <xsl:with-param name="base" select="$base"/>
     <xsl:with-param name="probe" select="$probe"/>
@@ -2137,7 +2141,7 @@
   </xsl:apply-templates>
 </xsl:template>
 
-<xsl:template match="html:*[@rel or (not(@rel|@rev|@content|@datatype) and @property and @resource|@href|@src|@typeof)]" mode="rdfa:locate-rel-up">
+<xsl:template match="html:*[@rel or (not(@rel|@rev|@content|@datetime|@datatype) and @property and @resource|@href|@src|@typeof)]" mode="rdfa:locate-rel-up">
   <xsl:param name="predicate" select="''"/>
   <xsl:param name="base" select="normalize-space((ancestor-or-self::html:html/html:head/html:base[@href])[1]/@href)"/>
   <xsl:param name="include-self" select="false()"/>
@@ -2218,7 +2222,7 @@
 
 
 <xsl:template match="html:*|html:*/@*" mode="rdfa:subject-node"/>
-<xsl:template match="html:*[not(ancestor::*[@property and not(@content)])]|html:*[not(ancestor::*[@property and not(@content)])]/@*" mode="rdfa:subject-node">
+<xsl:template match="html:*[not(ancestor::*[@property and not(@content|@datetime)])]|html:*[not(ancestor::*[@property and not(@content|@datetime)])]/@*" mode="rdfa:subject-node">
   <xsl:param name="subject" select="''"/>
   <xsl:param name="predicate" select="''"/>
   <xsl:param name="base" select="normalize-space((ancestor-or-self::html:html/html:head/html:base[@href])[1]/@href)"/>
@@ -2264,7 +2268,7 @@
         <xsl:message>rdfa:subject-node called with SUBJECT <xsl:apply-templates select="$element" mode="element-dump"/></xsl:message>
       </xsl:if>
       <!-- omg forgetting $element here literally cost me 5 hours -->
-      <xsl:apply-templates select="$element/parent::html:*[@rev]|$element/parent::html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][not(@property) or (@property and @content)]" mode="rdfa:locate-rev-up">
+      <xsl:apply-templates select="$element/parent::html:*[@rev]|$element/parent::html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][not(@property) or (@property and @content|@datetime)]" mode="rdfa:locate-rev-up">
         <xsl:with-param name="predicate" select="$predicate"/>
         <xsl:with-param name="base" select="$base"/>
         <xsl:with-param name="include-self" select="false()"/>
@@ -2286,7 +2290,7 @@
       <xsl:if test="$debug">
         <xsl:message>rdfa:subject-node called with OBJECT</xsl:message>
       </xsl:if>
-      <xsl:apply-templates select="$element/self::html:*[@rev]|$element/self::html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][not(@property) or (@property and @content)]" mode="rdfa:locate-rev-up">
+      <xsl:apply-templates select="$element/self::html:*[@rev]|$element/self::html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][not(@property) or (@property and @content|@datetime)]" mode="rdfa:locate-rev-up">
         <!--<xsl:apply-templates select="." mode="rdfa:locate-rev-up">-->
         <xsl:with-param name="predicate" select="$predicate"/>
         <xsl:with-param name="base" select="$base"/>
@@ -2294,7 +2298,7 @@
         <xsl:with-param name="probe" select="$probe"/>
         <xsl:with-param name="debug" select="$debug"/>
       </xsl:apply-templates>
-      <xsl:apply-templates select="$element/html:*[@rel]|$element/html:*[not(@rel|@rev)][(@property and @content) or not(@property)]|$element/html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][not(@property) or (@property and @content)]" mode="rdfa:locate-rel-down">
+      <xsl:apply-templates select="$element/html:*[@rel]|$element/html:*[not(@rel|@rev)][(@property and @content|@datetime) or not(@property)]|$element/html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][not(@property) or (@property and @content|@datetime)]" mode="rdfa:locate-rel-down">
         <xsl:with-param name="predicate" select="$predicate"/>
         <xsl:with-param name="base" select="$base"/>
         <xsl:with-param name="include-self" select="false()"/>
@@ -2330,7 +2334,7 @@
 
   <xsl:choose>
     <xsl:when test="string-length($is-subject)">
-      <xsl:apply-templates select="$element/parent::html:*[@rel]|$element/parent::html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][not(@property) or (@property and @content)]" mode="rdfa:locate-rel-up">
+      <xsl:apply-templates select="$element/parent::html:*[@rel]|$element/parent::html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][not(@property) or (@property and @content|@datetime)]" mode="rdfa:locate-rel-up">
         <xsl:with-param name="predicate" select="$predicate"/>
         <xsl:with-param name="base" select="$base"/>
         <xsl:with-param name="include-self" select="false()"/>
@@ -2345,14 +2349,14 @@
       </xsl:apply-templates>
     </xsl:when>
     <xsl:otherwise>
-      <xsl:apply-templates select="$element/self::html:*[@rel]|$element/self::html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][not(@property) or (@property and @content)]" mode="rdfa:locate-rel-up">
+      <xsl:apply-templates select="$element/self::html:*[@rel]|$element/self::html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][not(@property) or (@property and @content|@datetime)]" mode="rdfa:locate-rel-up">
         <!--<xsl:apply-templates select="." mode="rdfa:locate-rel-up">-->
         <xsl:with-param name="predicate" select="$predicate"/>
         <xsl:with-param name="base" select="$base"/>
         <xsl:with-param name="include-self" select="true()"/>
         <xsl:with-param name="probe" select="$probe"/>
       </xsl:apply-templates>
-      <xsl:apply-templates select="$element/html:*[@rev]|$element/html:*[not(@rel|@rev)][(@property and @content) or not(@property)]" mode="rdfa:locate-rev-down">
+      <xsl:apply-templates select="$element/html:*[@rev]|$element/html:*[not(@rel|@rev)][(@property and @content|@datetime) or not(@property)]" mode="rdfa:locate-rev-down">
         <xsl:with-param name="predicate" select="$predicate"/>
         <xsl:with-param name="base" select="$base"/>
         <xsl:with-param name="include-self" select="false()"/>
@@ -2906,7 +2910,7 @@
 </xsl:template>
 
 <xsl:template match="html:*|html:*/@*" mode="rdfa:literal-subject-node"/>
-<xsl:template match="html:*[not(ancestor::*[@property and not(@content)])]|html:*[not(ancestor::*[@property and not(@content)])]/@*" mode="rdfa:literal-subject-node">
+<xsl:template match="html:*[not(ancestor::*[@property and not(@content|@datetime)])]|html:*[not(ancestor::*[@property and not(@content|@datetime)])]/@*" mode="rdfa:literal-subject-node">
   <xsl:param name="base" select="normalize-space((ancestor-or-self::html:html/html:head/html:base[@href])[1]/@href)"/>
   <xsl:param name="subject"   select="''"/>
   <xsl:param name="predicate" select="''"/>
@@ -3439,7 +3443,7 @@
 
 <!-- you give this a node and it tells you the subject -->
 
-<xsl:template match="html:*[ancestor::*[@property][not(@content)]]" mode="rdfa:get-subject" priority="10">
+<xsl:template match="html:*[ancestor::*[@property][not(@content|@datetime)]]" mode="rdfa:get-subject" priority="10">
   <xsl:message>hit <xsl:value-of select="name()"/></xsl:message>
 </xsl:template>
 
