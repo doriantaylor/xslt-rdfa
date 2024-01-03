@@ -79,7 +79,7 @@
 <xsl:variable name="rdfa:UNIT-SEP"   select="'&#xf11f;'"/>
 <xsl:variable name="rdfa:RDF-NS"     select="'http://www.w3.org/1999/02/22-rdf-syntax-ns#'"/>
 <xsl:variable name="rdfa:XSD-NS"     select="'http://www.w3.org/2001/XMLSchema#'"/>
-<xsl:variable name="rdfa:RDF-TYPE"     select="concat($rdfa:RDF-NS, 'type')"/>
+<xsl:variable name="rdfa:RDF-TYPE"   select="concat($rdfa:RDF-NS, 'type')"/>
 
 <!--
     ### THIS IS ALL STUFF THAT COMES STRAIGHT FROM XSLTSL
@@ -87,7 +87,7 @@
 
 <xsl:template name="str:generate-string">
   <xsl:param name="text"/>
-  <xsl:param name="count"/>  
+  <xsl:param name="count"/>
   <xsl:choose>
     <xsl:when test="string-length($text) = 0 or $count &lt;= 0"/>
     <xsl:otherwise>
@@ -136,7 +136,7 @@
       <xsl:value-of select="$text" disable-output-escaping="yes"/>
     </xsl:when>
     <xsl:otherwise><xsl:value-of select="$text"/></xsl:otherwise>
-  </xsl:choose>            
+  </xsl:choose>
 </xsl:template>
 
 <xsl:template name="str:substring-before-last">
@@ -651,7 +651,7 @@
   <xsl:if test="$has-fragment and not(contains($out, '#'))">
     <xsl:text>#</xsl:text>
   </xsl:if>
-  
+
 </xsl:template>
 
 <xsl:template name="uri:make-relative-uri">
@@ -680,7 +680,7 @@
           <xsl:with-param name="uri" select="$abs-uri"/>
         </xsl:call-template>
       </xsl:variable>
-      
+
       <xsl:variable name="uri-authority">
         <xsl:call-template name="uri:get-uri-authority">
           <xsl:with-param name="uri" select="$abs-uri"/>
@@ -1534,32 +1534,37 @@
 
 <xsl:template match="html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][(@property and @content|@datetime) or not(@property)]" mode="rdfa:resource-down">
   <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:param name="debug" select="$rdfa:DEBUG"/>
 
-  <xsl:if test="$rdfa:DEBUG">
+  <xsl:if test="debug">
     <xsl:message>RESOURCE DOWN PASSTHRU <xsl:apply-templates select="." mode="element-dump"/></xsl:message>
   </xsl:if>
 
   <xsl:apply-templates select="html:*" mode="rdfa:resource-down">
     <xsl:with-param name="base" select="$base"/>
+    <xsl:with-param name="debug" select="$debug"/>
   </xsl:apply-templates>
 </xsl:template>
 
 <xsl:template match="html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][(@property and @content|@datetime) or not(@property)]" mode="rdfa:resource-up">
   <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:param name="debug" select="$rdfa:DEBUG"/>
 
-  <xsl:if test="$rdfa:DEBUG">
+  <xsl:if test="$debug">
     <xsl:message>RESOURCE UP PASSTHRU</xsl:message>
   </xsl:if>
 
   <xsl:apply-templates select=".." mode="rdfa:resource-up">
     <xsl:with-param name="base" select="$base"/>
+    <xsl:with-param name="debug" select="$debug"/>
   </xsl:apply-templates>
 </xsl:template>
 
 <xsl:template match="html:*" mode="rdfa:resource-down">
   <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:param name="debug" select="$rdfa:DEBUG"/>
 
-  <xsl:if test="$rdfa:DEBUG">
+  <xsl:if test="$debug">
     <xsl:message>RESOURCE DOWN ACTUAL</xsl:message>
   </xsl:if>
 
@@ -1567,9 +1572,10 @@
   <xsl:variable name="_">
     <xsl:apply-templates select="." mode="rdfa:new-subject">
       <xsl:with-param name="base" select="$base"/>
+      <xsl:with-param name="debug" select="$debug"/>
     </xsl:apply-templates>
   </xsl:variable>
-  <xsl:if test="$rdfa:DEBUG">
+  <xsl:if test="$debug">
     <xsl:message>look ma: <xsl:value-of select="$_"/></xsl:message>
   </xsl:if>
   <xsl:value-of select="$_"/>
@@ -1579,8 +1585,9 @@
 <!-- XXX do we even need this? -->
 <xsl:template match="html:*" mode="rdfa:resource-up">
   <xsl:param name="base" select="normalize-space((/html:html/html:head/html:base[@href])[1]/@href)"/>
+  <xsl:param name="debug" select="$rdfa:DEBUG"/>
 
-  <xsl:if test="$rdfa:DEBUG">
+  <xsl:if test="$debug">
     <xsl:message>RESOURCE UP ACTUAL</xsl:message>
   </xsl:if>
 
@@ -1931,7 +1938,7 @@
     </xsl:when>
     <xsl:otherwise/>
   </xsl:choose>
-  
+
 </xsl:template>
 
 <xsl:template match="html:*" mode="rdfa:locate-rev-down">
@@ -1941,7 +1948,8 @@
 </xsl:if>
 </xsl:template>
 
-<xsl:template match="html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][not(@property) or (@property and @content|@datetime)]" mode="rdfa:locate-rev-down">
+<!-- XXX THE html:body PART IS WRONG -->
+<xsl:template match="html:*[not(@rel|@rev|@about|@typeof|@resource|@href|@src)][not(@property) or (@property and @content|@datetime)]|html:body[not(@rev)]" mode="rdfa:locate-rev-down">
   <xsl:param name="predicate" select="''"/>
   <xsl:param name="base" select="normalize-space((ancestor-or-self::html:html/html:head/html:base[@href])[1]/@href)"/>
   <xsl:param name="probe" select="false()"/>
@@ -2025,6 +2033,7 @@
           <xsl:otherwise>
             <xsl:apply-templates select="html:*" mode="rdfa:resource-down">
               <xsl:with-param name="base" select="$base"/>
+              <xsl:with-param name="debug" select="$debug"/>
             </xsl:apply-templates>
           </xsl:otherwise>
         </xsl:choose>
@@ -2212,7 +2221,7 @@
     resource.
 -->
 <!-- bnodes can actually be either subjects or objects -->
-  
+
 <!-- luckily it looks like there is only ever one bnode per element
      evaluation -->
 
@@ -2339,6 +2348,7 @@
         <xsl:with-param name="base" select="$base"/>
         <xsl:with-param name="include-self" select="false()"/>
         <xsl:with-param name="probe" select="$probe"/>
+        <xsl:with-param name="debug" select="$debug"/>
       </xsl:apply-templates>
       <!--<xsl:apply-templates select="self::html:*[@rev]|self::html:*[not(@rel|@rev)][(@property and @content) or not(@property)]" mode="rdfa:locate-rev-down">-->
       <xsl:apply-templates select="$element" mode="rdfa:locate-rev-down">
@@ -2346,6 +2356,7 @@
         <xsl:with-param name="base" select="$base"/>
         <xsl:with-param name="include-self" select="true()"/>
         <xsl:with-param name="probe" select="$probe"/>
+        <xsl:with-param name="debug" select="$debug"/>
       </xsl:apply-templates>
     </xsl:when>
     <xsl:otherwise>
@@ -2355,12 +2366,14 @@
         <xsl:with-param name="base" select="$base"/>
         <xsl:with-param name="include-self" select="true()"/>
         <xsl:with-param name="probe" select="$probe"/>
+        <xsl:with-param name="debug" select="$debug"/>
       </xsl:apply-templates>
       <xsl:apply-templates select="$element/html:*[@rev]|$element/html:*[not(@rel|@rev)][(@property and @content|@datetime) or not(@property)]" mode="rdfa:locate-rev-down">
         <xsl:with-param name="predicate" select="$predicate"/>
         <xsl:with-param name="base" select="$base"/>
         <xsl:with-param name="include-self" select="false()"/>
         <xsl:with-param name="probe" select="$probe"/>
+        <xsl:with-param name="debug" select="$debug"/>
       </xsl:apply-templates>
     </xsl:otherwise>
   </xsl:choose>
@@ -2677,7 +2690,7 @@
     </xsl:choose>
   </xsl:variable>
   <xsl:variable name="rel-lax-nodes" select="key('rdfa:uri-node', $resource-rel-lax)"/>
-  
+
   <xsl:variable name="resource-rel-full">
     <xsl:choose>
       <xsl:when test="$_rel != $resource">
@@ -2830,7 +2843,7 @@
       </xsl:call-template>
     </xsl:if>
   </xsl:variable>
-  
+
   <xsl:choose>
     <xsl:when test="$raw">
       <xsl:value-of select="$raw-resource-list"/>
