@@ -382,6 +382,18 @@
   </xsl:choose>
 </xsl:template>
 
+<xsl:template name="uri:document-for-uri">
+  <xsl:param name="uri">
+    <xsl:message terminate="yes">`uri` parameter required</xsl:message>
+  </xsl:param>
+  <xsl:choose>
+    <xsl:when test="contains($uri, '#')">
+      <xsl:value-of select="normalize-space(substring-before($uri, '#'))"/>
+    </xsl:when>
+    <xsl:otherwise><xsl:value-of select="normalize-space($uri)"/></xsl:otherwise>
+  </xsl:choose>
+</xsl:template>
+
 <!--
     ### THIS IS ALL STUFF THAT SHOULD REALLY BE INCORPORATED INTO XSLTSL ###
 -->
@@ -1629,7 +1641,7 @@
 <xsl:template match="html:*" mode="rdfa:locate-rel-down">
   <xsl:param name="debug" select="$rdfa:DEBUG"/>
   <xsl:if test="$debug">
-    <xsl:message>CALLED NOOP on <xsl:apply-templates select="." mode="element-dump"/></xsl:message>
+    <xsl:message>rdfa:locate-rel-down: CALLED NOOP on <xsl:apply-templates select="." mode="element-dump"/></xsl:message>
   </xsl:if>
 </xsl:template>
 
@@ -1641,11 +1653,11 @@
   <xsl:param name="debug" select="$rdfa:DEBUG"/>
 
   <xsl:if test="not(string-length(normalize-space($predicate)))">
-    <xsl:message terminate="yes">EMPTY PREDICATE</xsl:message>
+    <xsl:message terminate="yes">EMPTY PREDICATE: rdfa:locate-rel-down</xsl:message>
   </xsl:if>
 
   <xsl:if test="$debug">
-    <xsl:message>CALLED PASSTHRU ON <xsl:apply-templates select="." mode="element-dump"/></xsl:message>
+    <xsl:message>rdfa:locate-rel-down: CALLED PASSTHRU ON <xsl:apply-templates select="." mode="element-dump"/></xsl:message>
   </xsl:if>
 
   <xsl:if test="$include-self or not(@about|@typeof)">
@@ -1677,7 +1689,7 @@
   <xsl:choose>
     <xsl:when test="not($include-self) and (@about or (@rel and @typeof and not(@resource|@href|@src)))">
       <xsl:if test="$debug">
-        <xsl:message>rdfa:locate-rel-down: skipping this element</xsl:message>
+        <xsl:message>rdfa:locate-rel-down: skipping this element: <xsl:apply-templates select="." mode="element-dump"/></xsl:message>
       </xsl:if>
     </xsl:when>
     <xsl:when test="@rel">
@@ -1704,6 +1716,10 @@
         <xsl:text> </xsl:text>
       </xsl:variable>
 
+      <xsl:if test="$debug">
+        <xsl:message>rdfa:locate-rel-down: (<xsl:value-of select="$_"/>) =~ <xsl:value-of select="$predicate"/> == <xsl:value-of select="contains($_, concat(' ', normalize-space($predicate), ' '))"/></xsl:message>
+      </xsl:if>
+
       <xsl:if test="contains($_, concat(' ', $predicate, ' '))">
         <xsl:text> </xsl:text>
         <xsl:choose>
@@ -1714,18 +1730,27 @@
               <xsl:with-param name="node" select="."/>
               <xsl:with-param name="base" select="$base"/>
             </xsl:call-template>
+            <xsl:if test="$debug">
+              <xsl:message>rdfa:locate-rel-down: setting object to resource <xsl:value-of select="@resource"/></xsl:message>
+            </xsl:if>
           </xsl:when>
           <xsl:when test="@href">
             <xsl:call-template name="uri:resolve-uri">
               <xsl:with-param name="uri" select="normalize-space(@href)"/>
               <xsl:with-param name="base" select="$base"/>
             </xsl:call-template>
+            <xsl:if test="$debug">
+              <xsl:message>rdfa:locate-rel-down: setting object to href <xsl:value-of select="@href"/></xsl:message>
+            </xsl:if>
           </xsl:when>
           <xsl:when test="@src">
             <xsl:call-template name="uri:resolve-uri">
               <xsl:with-param name="uri" select="normalize-space(@src)"/>
               <xsl:with-param name="base" select="$base"/>
             </xsl:call-template>
+            <xsl:if test="$debug">
+              <xsl:message>rdfa:locate-rel-down: setting object to src <xsl:value-of select="@src"/></xsl:message>
+            </xsl:if>
           </xsl:when>
           <xsl:otherwise>
             <xsl:apply-templates select="html:*" mode="rdfa:resource-down">
@@ -2247,7 +2272,7 @@
 
   <xsl:if test="$debug">
     <xsl:message>
-      <xsl:text>S-P-O: </xsl:text>
+      <xsl:text>rdfa:subject-node: S-P-O</xsl:text>
       <xsl:value-of select="$subject"/><xsl:text> </xsl:text>
       <xsl:value-of select="$predicate"/><xsl:text> </xsl:text>
       <xsl:apply-templates select="$element" mode="element-dump"/>
@@ -2451,7 +2476,7 @@
     </xsl:choose>
   </xsl:variable>
   <xsl:variable name="rel-lax-nodes" select="key('rdfa:uri-node', $resource-rel-lax)"/>
-  
+
   <xsl:variable name="resource-rel-full">
     <xsl:choose>
       <xsl:when test="$_rel != $resource">
@@ -2519,6 +2544,7 @@
   <xsl:param name="subject"    select="$base"/>
   <xsl:param name="predicate"  select="''"/>
   <xsl:param name="single"     select="false()"/>
+  <xsl:param name="traverse"   select="false()"/>
   <xsl:param name="debug"      select="$rdfa:DEBUG"/>
   <xsl:param name="raw"        select="false()"/>
   <xsl:param name="prefixes">
@@ -2578,13 +2604,32 @@
 
   <xsl:variable name="raw-resource-list">
     <xsl:text> </xsl:text>
-    <xsl:apply-templates select="$current" mode="rdfa:object-resource-internal">
-      <xsl:with-param name="subject"    select="$first-resource"/>
-      <xsl:with-param name="predicate"  select="$predicate-absolute"/>
-      <xsl:with-param name="base"       select="$base"/>
-      <xsl:with-param name="prefixes"   select="$prefixes"/>
-      <xsl:with-param name="debug"      select="$debug"/>
-    </xsl:apply-templates>
+
+    <xsl:choose>
+      <xsl:when test="$traverse">
+	<xsl:variable name="doc">
+	  <xsl:call-template name="uri:document-for-uri">
+	    <xsl:with-param name="uri" select="$first-resource"/>
+	  </xsl:call-template>
+	</xsl:variable>
+	<xsl:apply-templates select="document($doc)/*" mode="rdfa:object-resource-internal">
+	  <xsl:with-param name="subject"    select="$first-resource"/>
+	  <xsl:with-param name="predicate"  select="$predicate-absolute"/>
+	  <!--<xsl:with-param name="base"       select="$base"/>
+	  <xsl:with-param name="prefixes"   select="$prefixes"/>-->
+	  <xsl:with-param name="debug"      select="$debug"/>
+	</xsl:apply-templates>
+      </xsl:when>
+      <xsl:otherwise>
+	<xsl:apply-templates select="$current" mode="rdfa:object-resource-internal">
+	  <xsl:with-param name="subject"    select="$first-resource"/>
+	  <xsl:with-param name="predicate"  select="$predicate-absolute"/>
+	  <xsl:with-param name="base"       select="$base"/>
+	  <xsl:with-param name="prefixes"   select="$prefixes"/>
+	  <xsl:with-param name="debug"      select="$debug"/>
+	</xsl:apply-templates>
+      </xsl:otherwise>
+    </xsl:choose>
 
     <xsl:if test="string-length(substring-after(normalize-space($resource-list), ' '))">
       <xsl:text> </xsl:text>
@@ -2758,6 +2803,7 @@
   <xsl:param name="object"     select="$base"/>
   <xsl:param name="single"     select="false()"/>
   <xsl:param name="raw"        select="false()"/>
+  <xsl:param name="traverse"   select="false()"/>
   <xsl:param name="debug"      select="$rdfa:DEBUG"/>
   <xsl:param name="prefixes">
     <xsl:apply-templates select="$current" mode="rdfa:prefix-stack"/>
@@ -2822,13 +2868,31 @@
       <xsl:message>trying rdfa:subject-resource-internal with <xsl:value-of select="$predicate-absolute"/> and <xsl:value-of select="$first-resource"/></xsl:message>
     </xsl:if>
 
-    <xsl:apply-templates select="$current" mode="rdfa:subject-resource-internal">
-      <xsl:with-param name="predicate"  select="$predicate-absolute"/>
-      <xsl:with-param name="object"     select="$first-resource"/>
-      <xsl:with-param name="base"       select="$base"/>
-      <xsl:with-param name="prefixes"   select="$prefixes"/>
-      <xsl:with-param name="debug"      select="$debug"/>
-    </xsl:apply-templates>
+    <xsl:choose>
+      <xsl:when test="$traverse">
+	<xsl:variable name="doc">
+	  <xsl:call-template name="uri:document-for-uri">
+	    <xsl:with-param name="uri" select="$first-resource"/>
+	  </xsl:call-template>
+	</xsl:variable>
+	<xsl:apply-templates select="document($doc)/*" mode="rdfa:subject-resource-internal">
+	  <xsl:with-param name="predicate"  select="$predicate-absolute"/>
+	  <xsl:with-param name="object"     select="$first-resource"/>
+	  <!--<xsl:with-param name="base"       select="$base"/>
+	  <xsl:with-param name="prefixes"   select="$prefixes"/>-->
+	  <xsl:with-param name="debug"      select="$debug"/>
+	</xsl:apply-templates>
+      </xsl:when>
+      <xsl:otherwise>
+	<xsl:apply-templates select="$current" mode="rdfa:subject-resource-internal">
+	  <xsl:with-param name="predicate"  select="$predicate-absolute"/>
+	  <xsl:with-param name="object"     select="$first-resource"/>
+	  <xsl:with-param name="base"       select="$base"/>
+	  <xsl:with-param name="prefixes"   select="$prefixes"/>
+	  <xsl:with-param name="debug"      select="$debug"/>
+	</xsl:apply-templates>
+      </xsl:otherwise>
+    </xsl:choose>
 
     <xsl:if test="string-length(substring-after(normalize-space($resource-list), ' '))">
       <xsl:text> </xsl:text>
@@ -3056,7 +3120,7 @@
     </xsl:choose>
   </xsl:variable>
   <xsl:variable name="rel-lax-nodes" select="key('rdfa:uri-node', $resource-rel-lax)"/>
-  
+
   <xsl:variable name="resource-rel-full">
     <xsl:choose>
       <xsl:when test="$_rel != $resource">
@@ -3230,7 +3294,7 @@
       </xsl:otherwise>
     </xsl:choose>
   </xsl:variable>
-  
+
   <xsl:variable name="predicate-absolute">
     <xsl:choose>
       <xsl:when test="$sanitize">
