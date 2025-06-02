@@ -1489,7 +1489,7 @@
   <xsl:param name="predicate" select="''"/>
   <xsl:param name="current" select="."/>
 </xsl:template>
-C
+
 <x:doc>
   <h3>rdfa:new-subject</h3>
 </x:doc>
