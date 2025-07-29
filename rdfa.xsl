@@ -83,6 +83,7 @@
 <xsl:variable name="rdfa:RECORD-SEP" select="'&#xf11e;'"/>
 <xsl:variable name="rdfa:UNIT-SEP"   select="'&#xf11f;'"/>
 <xsl:variable name="rdfa:RDF-NS"     select="'http://www.w3.org/1999/02/22-rdf-syntax-ns#'"/>
+<xsl:variable name="rdfa:RDFS-NS"    select="'http://www.w3.org/2000/01/rdf-schema#'"/>
 <xsl:variable name="rdfa:XSD-NS"     select="'http://www.w3.org/2001/XMLSchema#'"/>
 <xsl:variable name="rdfa:RDF-TYPE"   select="concat($rdfa:RDF-NS, 'type')"/>
 
@@ -1007,9 +1008,10 @@
 
 <xsl:template name="str:unique-tokens">
   <xsl:param name="string"/>
+  <xsl:param name="tokens" select="$string"/>
   <xsl:param name="cache"/>
 
-  <xsl:variable name="_norm" select="normalize-space($string)"/>
+  <xsl:variable name="_norm" select="normalize-space($tokens)"/>
 
   <xsl:choose>
     <xsl:when test="$_norm  = ''">
@@ -1034,7 +1036,7 @@
       <xsl:choose>
         <xsl:when test="contains($rest, ' ')">
           <xsl:call-template name="str:unique-tokens">
-            <xsl:with-param name="string" select="$rest"/>
+            <xsl:with-param name="tokens" select="$rest"/>
             <xsl:with-param name="cache"  select="$cache-out"/>
           </xsl:call-template>
         </xsl:when>
@@ -2915,6 +2917,10 @@
 
     <xsl:choose>
       <xsl:when test="$traverse">
+        <xsl:if test="$debug">
+          <xsl:message>rdfa:object-resources traversing to <xsl:value-of select="$first-resource"/></xsl:message>
+        </xsl:if>
+
 	<xsl:variable name="doc">
 	  <xsl:call-template name="uri:document-for-uri">
 	    <xsl:with-param name="uri" select="$first-resource"/>
@@ -2947,6 +2953,7 @@
         <xsl:with-param name="current"    select="$current"/>
         <xsl:with-param name="base"       select="$base"/>
         <xsl:with-param name="single"     select="$single"/>
+        <xsl:with-param name="traverse"   select="$traverse"/>
         <xsl:with-param name="prefixes"   select="$prefixes"/>
         <xsl:with-param name="debug"      select="$debug"/>
       </xsl:call-template>
@@ -3151,10 +3158,6 @@
     </xsl:choose>
   </xsl:variable>
 
-  <xsl:if test="$debug">
-    <xsl:message>selecting '<xsl:value-of select="$resource-list"/>' from <xsl:value-of select="$object"/></xsl:message>
-  </xsl:if>
-
   <xsl:variable name="first-resource">
     <xsl:choose>
       <xsl:when test="contains(normalize-space($resource-list), ' ')">
@@ -3165,6 +3168,10 @@
       </xsl:otherwise>
     </xsl:choose>
   </xsl:variable>
+
+  <xsl:if test="$debug">
+    <xsl:message>rdfa:subject-resources selecting '<xsl:value-of select="$first-resource"/>' from <xsl:value-of select="$object"/></xsl:message>
+  </xsl:if>
 
   <xsl:variable name="predicate-absolute">
     <xsl:call-template name="rdfa:resolve-curie">
@@ -3187,6 +3194,10 @@
 
     <xsl:choose>
       <xsl:when test="$traverse">
+        <xsl:if test="$debug">
+          <xsl:message>rdfa:subject-resources traversing to <xsl:value-of select="$first-resource"/></xsl:message>
+        </xsl:if>
+
 	<xsl:variable name="doc">
 	  <xsl:call-template name="uri:document-for-uri">
 	    <xsl:with-param name="uri" select="$first-resource"/>
@@ -3219,6 +3230,7 @@
         <xsl:with-param name="current"   select="$current"/>
         <xsl:with-param name="base"      select="$base"/>
         <xsl:with-param name="single"    select="$single"/>
+        <xsl:with-param name="traverse"  select="$traverse"/>
         <xsl:with-param name="prefixes"  select="$prefixes"/>
         <xsl:with-param name="debug"     select="$debug"/>
       </xsl:call-template>
